@@ -16,9 +16,11 @@ export class TextFile {
   #name: string
   #fh: FileSystemFileHandle | null = null
   #initReady: Promise<void>
-  #accessHandle: { write: (data: unknown) => Promise<unknown> } | null = null
+  #accessHandle: AsyncFileSystemSyncAccessHandle | null = null
 
   #txtEC = new TextEncoder()
+
+  #pos = 0
 
   constructor(fileName: string) {
     const name = fileName.split('/').at(-1)
@@ -31,6 +33,7 @@ export class TextFile {
   async #init(fileName: string) {
     const dir = await makeParent(fileName)
     this.#fh = await dir.getFileHandle(this.#name, { create: true })
+    this.#pos = (await this.#fh.getFile()).size
 
     this.#accessHandle = await createOPFSAccess()(fileName, this.#fh)
   }
@@ -40,7 +43,10 @@ export class TextFile {
   async append(str: string) {
     console.log(4444, str)
     await this.#initReady
-    await this.#accessHandle?.write(this.#txtEC.encode(str))
+    this.#pos += await this.#accessHandle?.write(
+      this.#txtEC.encode(str),
+      { at: this.#pos }
+    ) ?? 0
   }
 
   insert(offset: number, str: string) { }
@@ -48,9 +54,17 @@ export class TextFile {
 
 interface FileSystemSyncAccessHandle {
   read: (container: ArrayBuffer, opts: { at: number }) => void
-  write: (data: ArrayBuffer) => number
+  write: (data: ArrayBuffer, opts: { at: number }) => number
   flush: () => void
-  getSize: () => number
+  // getSize: () => number
+}
+
+type Async<F> = F extends (...args: infer Params) => infer R
+  ? (...args: Params) => Promise<R>
+  : never
+
+type AsyncFileSystemSyncAccessHandle = {
+  [K in keyof FileSystemSyncAccessHandle]: Async<FileSystemSyncAccessHandle[K]>
 }
 
 function createOPFSAccess() {
@@ -86,10 +100,20 @@ function createOPFSAccess() {
     }
   }
 
-  return async (fileName: string, fileHandle: FileSystemFileHandle) => {
+  return async (
+    fileName: string,
+    fileHandle: FileSystemFileHandle
+  ): Promise<AsyncFileSystemSyncAccessHandle> => {
     await postMsg('register', { fileName, fileHandle })
     return {
-      write: async (data: unknown) => await postMsg('write', { fileName, data })
+      read: async () => { },
+      write: async (data, opts) =>
+        (await postMsg('write', {
+          fileName,
+          data,
+          opts
+        })) as number,
+      flush: async () => { }
     }
   }
 }
@@ -98,20 +122,18 @@ const opfsWorkerSetup = (): void => {
   const fileAccesserMap: Record<string, FileSystemSyncAccessHandle> = {}
 
   self.onmessage = async e => {
-    const {
-      evtType,
-      args: { fileName, fileHandle }
-    } = e.data
+    const { evtType, args } = e.data
 
-    let accessHandle = fileAccesserMap[fileName]
+    let accessHandle = fileAccesserMap[args.fileName]
 
     let returnVal
     const trans: Transferable[] = []
     if (evtType === 'register') {
-      accessHandle = await fileHandle.createSyncAccessHandle()
-      fileAccesserMap[fileName] = accessHandle
+      accessHandle = await args.fileHandle.createSyncAccessHandle()
+      fileAccesserMap[args.fileName] = accessHandle
     } else if (evtType === 'write') {
-      accessHandle.write(e.data.args.data)
+      const { data, opts } = e.data.args
+      returnVal = accessHandle.write(data, opts)
       accessHandle.flush()
     } else if (evtType === 'read') {
       const { offset, size } = e.data.args
