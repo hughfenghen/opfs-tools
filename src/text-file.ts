@@ -16,11 +16,11 @@ export class TextFile {
   #name: string
   #fh: FileSystemFileHandle | null = null
   #initReady: Promise<void>
-  #accessHandle: AsyncFileSystemSyncAccessHandle | null = null
+  #accessHandle: OPFSWorkerAccessHandle | null = null
 
   #txtEC = new TextEncoder()
 
-  #pos = 0
+  #fileSize = 0
 
   constructor(fileName: string) {
     const name = fileName.split('/').at(-1)
@@ -32,20 +32,62 @@ export class TextFile {
 
   async #init(fileName: string) {
     const dir = await makeParent(fileName)
-    this.#fh = await dir.getFileHandle(this.#name, { create: true })
-    this.#pos = (await this.#fh.getFile()).size
+    this.#fh = await dir.getFileHandle(this.#name, { create: false })
+    this.#fileSize = (await this.#fh.getFile()).size
 
     this.#accessHandle = await createOPFSAccess()(fileName, this.#fh)
   }
 
-  read(offset: number, size: number) { }
+  read(offset: number, length: number) { }
+
+  lines() {
+    let offset = 0
+    const txtDC = new TextDecoder()
+    const step = 500
+
+    let readDoned = false
+    let cacheStr = ''
+    async function readNext(accessHandle: OPFSWorkerAccessHandle) {
+      if (cacheStr.length === 0 && readDoned) return { value: null, done: true }
+
+      const idx = cacheStr.indexOf('\n')
+      if (idx === -1) {
+        if (readDoned) {
+          const rs = { value: cacheStr, done: false }
+          cacheStr = ''
+          return rs
+        }
+
+        const buf = await accessHandle.read(offset, step)
+        readDoned = buf?.byteLength !== step
+
+        offset += buf?.byteLength ?? 0
+        cacheStr += txtDC.decode(buf, { stream: !readDoned })
+
+        return readNext(accessHandle)
+      }
+
+      const val = cacheStr.slice(0, idx)
+      cacheStr = cacheStr.slice(idx + 1)
+      return { value: val, done: false }
+    }
+    return {
+      [Symbol.asyncIterator]: () => {
+        return {
+          next: async () => {
+            await this.#initReady
+            return await readNext(this.#accessHandle!)
+          }
+        }
+      }
+    }
+  }
 
   async append(str: string) {
-    console.log(4444, str)
     await this.#initReady
-    this.#pos += await this.#accessHandle?.write(
-      this.#txtEC.encode(str),
-      { at: this.#pos }
+    this.#fileSize += await this.#accessHandle?.write(
+      this.#txtEC.encode(str).buffer,
+      { at: this.#fileSize }
     ) ?? 0
   }
 
@@ -53,7 +95,7 @@ export class TextFile {
 }
 
 interface FileSystemSyncAccessHandle {
-  read: (container: ArrayBuffer, opts: { at: number }) => void
+  read: (container: ArrayBuffer, opts: { at: number }) => number
   write: (data: ArrayBuffer, opts: { at: number }) => number
   flush: () => void
   // getSize: () => number
@@ -63,8 +105,9 @@ type Async<F> = F extends (...args: infer Params) => infer R
   ? (...args: Params) => Promise<R>
   : never
 
-type AsyncFileSystemSyncAccessHandle = {
-  [K in keyof FileSystemSyncAccessHandle]: Async<FileSystemSyncAccessHandle[K]>
+type OPFSWorkerAccessHandle = {
+  read: (offset: number, size: number) => Promise<ArrayBuffer>
+  write: Async<FileSystemSyncAccessHandle['write']>
 }
 
 function createOPFSAccess() {
@@ -74,7 +117,7 @@ function createOPFSAccess() {
 
   let cbId = 0
   let cbFns: Record<number, Function> = {}
-  async function postMsg(evtType: string, args: unknown) {
+  async function postMsg(evtType: string, args: unknown, trans: Transferable[] = []) {
     cbId += 1
 
     const rsP = new Promise(resolve => {
@@ -84,7 +127,7 @@ function createOPFSAccess() {
       cbId,
       evtType,
       args
-    })
+    }, trans)
 
     return rsP
   }
@@ -103,17 +146,20 @@ function createOPFSAccess() {
   return async (
     fileName: string,
     fileHandle: FileSystemFileHandle
-  ): Promise<AsyncFileSystemSyncAccessHandle> => {
+  ): Promise<OPFSWorkerAccessHandle> => {
     await postMsg('register', { fileName, fileHandle })
     return {
-      read: async () => { },
+      read: async (offset, size) => (await postMsg('read', {
+        fileName,
+        offset,
+        size
+      })) as ArrayBuffer,
       write: async (data, opts) =>
         (await postMsg('write', {
           fileName,
           data,
           opts
-        })) as number,
-      flush: async () => { }
+        }, [data])) as number,
     }
   }
 }
@@ -138,8 +184,9 @@ const opfsWorkerSetup = (): void => {
     } else if (evtType === 'read') {
       const { offset, size } = e.data.args
       const buf = new ArrayBuffer(size)
-      accessHandle.read(buf, { at: offset })
-      returnVal = buf
+      const readLen = accessHandle.read(buf, { at: offset })
+      // @ts-expect-error transfer support by chrome 114
+      returnVal = buf.transfer?.(readLen) ?? buf.slice(0, readLen)
       trans.push(returnVal)
     }
 
