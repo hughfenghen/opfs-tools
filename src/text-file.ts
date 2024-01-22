@@ -12,6 +12,11 @@ async function makeParent(fileName: string) {
   return dirHandle ?? root
 }
 
+interface FileOpts {
+  create?: boolean
+  overwrite?: boolean
+}
+
 export class TextFile {
   #name: string
   #fh: FileSystemFileHandle | null = null
@@ -22,20 +27,29 @@ export class TextFile {
 
   #fileSize = 0
 
-  constructor(fileName: string) {
+  constructor(fileName: string, opts: FileOpts = {}) {
     const name = fileName.split('/').at(-1)
     if (name == null) throw Error('Illegal file name')
     this.#name = name
 
-    this.#initReady = this.#init(fileName)
+    this.#initReady = this.#init(fileName, opts)
   }
 
-  async #init(fileName: string) {
+  async #init(fileName: string, opts: FileOpts) {
     const dir = await makeParent(fileName)
-    this.#fh = await dir.getFileHandle(this.#name, { create: false })
+    this.#fh = await dir.getFileHandle(this.#name, opts)
+    if (opts.overwrite === true) {
+      const w = await this.#fh.createWritable()
+      await w.truncate(0)
+      await w.close()
+    }
     this.#fileSize = (await this.#fh.getFile()).size
 
     this.#accessHandle = await createOPFSAccess()(fileName, this.#fh)
+  }
+
+  get size() {
+    return this.#fileSize
   }
 
   read(offset: number, length: number) { }
