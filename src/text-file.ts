@@ -19,7 +19,11 @@ interface FileOpts {
 
 export class TextFile {
   #name: string
+
   #fh: FileSystemFileHandle | null = null
+
+  #parent: FileSystemDirectoryHandle | null = null
+
   #initReady: Promise<void>
   #accessHandle: OPFSWorkerAccessHandle | null = null
 
@@ -37,6 +41,7 @@ export class TextFile {
 
   async #init(fileName: string, opts: FileOpts) {
     const dir = await makeParent(fileName)
+    this.#parent = dir
     this.#fh = await dir.getFileHandle(this.#name, opts)
     if (opts.overwrite === true) {
       const w = await this.#fh.createWritable()
@@ -51,8 +56,6 @@ export class TextFile {
   get size() {
     return this.#fileSize
   }
-
-  read(offset: number, length: number) { }
 
   lines() {
     let offset = 0
@@ -106,12 +109,18 @@ export class TextFile {
   }
 
   insert(offset: number, str: string) { }
+
+  async remove() {
+    await this.#accessHandle?.close()
+    await this.#parent?.removeEntry(this.#name)
+  }
 }
 
 interface FileSystemSyncAccessHandle {
   read: (container: ArrayBuffer, opts: { at: number }) => number
   write: (data: ArrayBuffer, opts: { at: number }) => number
   flush: () => void
+  close: () => void
   // getSize: () => number
 }
 
@@ -122,6 +131,7 @@ type Async<F> = F extends (...args: infer Params) => infer R
 type OPFSWorkerAccessHandle = {
   read: (offset: number, size: number) => Promise<ArrayBuffer>
   write: Async<FileSystemSyncAccessHandle['write']>
+  close: Async<FileSystemSyncAccessHandle['close']>
 }
 
 function createOPFSAccess() {
@@ -174,6 +184,9 @@ function createOPFSAccess() {
           data,
           opts
         }, [data])) as number,
+      close: async () => (await postMsg('close', {
+        fileName,
+      })) as void
     }
   }
 }
@@ -191,6 +204,9 @@ const opfsWorkerSetup = (): void => {
     if (evtType === 'register') {
       accessHandle = await args.fileHandle.createSyncAccessHandle()
       fileAccesserMap[args.fileName] = accessHandle
+    } else if (evtType === 'close') {
+      accessHandle.close()
+      delete fileAccesserMap[args.fileName]
     } else if (evtType === 'write') {
       const { data, opts } = e.data.args
       returnVal = accessHandle.write(data, opts)
