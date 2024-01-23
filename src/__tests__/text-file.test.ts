@@ -33,3 +33,17 @@ test('read the text file line by line', async () => {
   expect(lines).toEqual(['Hello world!', '', '我🩷坤坤', ''])
   await tf.remove()
 })
+
+test('read text file as a string', async () => {
+  const tf = new TextFile('/unit-test/test.txt', {
+    create: true,
+    overwrite: true
+  })
+  await tf.append('Hello world!\n')
+  await tf.append('\n')
+  await tf.append('我🩷坤坤\n')
+  await tf.append('\n')
+
+  expect((await tf.text())).toBe('Hello world!\n\n我🩷坤坤\n\n')
+  await tf.remove()
+})

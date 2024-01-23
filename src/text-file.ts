@@ -108,7 +108,10 @@ export class TextFile {
     ) ?? 0
   }
 
-  insert(offset: number, str: string) { }
+  async text() {
+    const txtDC = new TextDecoder()
+    return txtDC.decode(await (await this.#fh?.getFile())?.arrayBuffer())
+  }
 
   async remove() {
     await this.#accessHandle?.close()
