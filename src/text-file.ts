@@ -1,62 +1,12 @@
-import { OPFSWorkerAccessHandle, createOPFSAccess } from "./access-worker"
+import { OPFSWorkerAccessHandle } from "./access-worker"
+import { BaseFile, FileOpts } from "./base-file"
 
-const root = await navigator.storage.getDirectory()
-
-async function makeParent(fileName: string) {
-  const paths = fileName
-    .split('/')
-    .filter(s => s.length > 0)
-    .slice(0, -1)
-  let dirHandle
-  for (const p of paths) {
-    dirHandle = await root.getDirectoryHandle(p, { create: true })
-  }
-  return dirHandle ?? root
-}
-
-interface FileOpts {
-  create?: boolean
-  overwrite?: boolean
-}
-
-export class TextFile {
-  #name: string
-
-  #fh: FileSystemFileHandle | null = null
-
-  #parent: FileSystemDirectoryHandle | null = null
-
-  #initReady: Promise<void>
-  #accessHandle: OPFSWorkerAccessHandle | null = null
+export class TextFile extends BaseFile {
 
   #txtEC = new TextEncoder()
 
-  #fileSize = 0
-
-  constructor(fileName: string, opts: FileOpts = {}) {
-    const name = fileName.split('/').at(-1)
-    if (name == null) throw Error('Illegal file name')
-    this.#name = name
-
-    this.#initReady = this.#init(fileName, opts)
-  }
-
-  async #init(fileName: string, opts: FileOpts) {
-    const dir = await makeParent(fileName)
-    this.#parent = dir
-    this.#fh = await dir.getFileHandle(this.#name, opts)
-    if (opts.overwrite === true) {
-      const w = await this.#fh.createWritable()
-      await w.truncate(0)
-      await w.close()
-    }
-    this.#fileSize = (await this.#fh.getFile()).size
-
-    this.#accessHandle = await createOPFSAccess()(fileName, this.#fh)
-  }
-
-  get size() {
-    return this.#fileSize
+  constructor(filePath: string, opts: FileOpts = {}) {
+    super(filePath, opts)
   }
 
   lines() {
@@ -94,8 +44,8 @@ export class TextFile {
       [Symbol.asyncIterator]: () => {
         return {
           next: async () => {
-            await this.#initReady
-            return await readNext(this.#accessHandle!)
+            await this.initReady
+            return await readNext(this.accessHandle!)
           }
         }
       }
@@ -103,20 +53,17 @@ export class TextFile {
   }
 
   async append(str: string) {
-    await this.#initReady
-    this.#fileSize += await this.#accessHandle?.write(
+    await this.initReady
+    this.fileSize += await this.accessHandle?.write(
       this.#txtEC.encode(str).buffer,
-      { at: this.#fileSize }
+      { at: this.fileSize }
     ) ?? 0
   }
 
   async text() {
     const txtDC = new TextDecoder()
-    return txtDC.decode(await (await this.#fh?.getFile())?.arrayBuffer())
-  }
-
-  async remove() {
-    await this.#accessHandle?.close()
-    await this.#parent?.removeEntry(this.#name)
+    return txtDC.decode(
+      await (await this.getOriginFile())?.arrayBuffer()
+    )
   }
 }
