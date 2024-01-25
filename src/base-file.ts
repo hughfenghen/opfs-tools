@@ -62,11 +62,8 @@ export abstract class BaseFile {
     return await this.#fh?.getFile()
   }
 
-  async truncate(size: number) {
-    // todo
-    const w = await this.#fh?.createWritable()
-    await w?.truncate(size)
-    await w?.close()
+  async truncate(newSize: number) {
+    await this.accessHandle?.truncate(newSize)
   }
 
   async remove() {

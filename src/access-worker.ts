@@ -4,6 +4,7 @@ interface FileSystemSyncAccessHandle {
   write: (data: ArrayBuffer, opts: { at: number }) => number
   flush: () => void
   close: () => void
+  truncate: (newSize: number) => void
   // getSize: () => number
 }
 
@@ -15,6 +16,7 @@ export type OPFSWorkerAccessHandle = {
   read: (offset: number, size: number) => Promise<ArrayBuffer>
   write: Async<FileSystemSyncAccessHandle['write']>
   close: Async<FileSystemSyncAccessHandle['close']>
+  truncate: Async<FileSystemSyncAccessHandle['truncate']>
 }
 
 // todo: 池化 worker 避免创建数量过多
@@ -70,6 +72,10 @@ export function createOPFSAccess() {
         }, [data])) as number,
       close: async () => (await postMsg('close', {
         fileName,
+      })) as void,
+      truncate: async (newSize: number) => (await postMsg('truncate', {
+        fileName,
+        newSize
       })) as void
     }
   }
@@ -91,6 +97,8 @@ const opfsWorkerSetup = (): void => {
     } else if (evtType === 'close') {
       accessHandle.close()
       delete fileAccesserMap[args.fileName]
+    } else if (evtType === 'truncate') {
+      accessHandle.truncate(args.newSize)
     } else if (evtType === 'write') {
       const { data, opts } = e.data.args
       returnVal = accessHandle.write(data, opts)
