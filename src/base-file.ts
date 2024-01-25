@@ -70,7 +70,14 @@ export abstract class BaseFile {
   }
 
   async remove() {
-    await this.accessHandle?.close()
+    await this.close()
     await this.parent?.removeEntry(this.name)
+  }
+
+  /**
+   * When a file is no longer in use, it is necessary to call the close method.
+   */
+  async close() {
+    await this.accessHandle?.close()
   }
 }
