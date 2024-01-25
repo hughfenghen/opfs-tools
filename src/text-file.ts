@@ -54,9 +54,9 @@ export class TextFile extends BaseFile {
 
   async append(str: string) {
     await this.initReady
-    this.fileSize += await this.accessHandle?.write(
+    await this.accessHandle?.write(
       this.#txtEC.encode(str).buffer,
-      { at: this.fileSize }
+      { at: await this.getSize() }
     ) ?? 0
   }
 

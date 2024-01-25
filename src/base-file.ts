@@ -24,17 +24,11 @@ async function makeParent(fileName: string) {
 export abstract class BaseFile {
   name: string
 
-  get size() {
-    return this.fileSize
-  }
-
   protected initReady: Promise<void>
 
   protected parent: FileSystemDirectoryHandle | null = null
 
   protected accessHandle: OPFSWorkerAccessHandle | null = null
-
-  protected fileSize = 0
 
   #fh: FileSystemFileHandle | null = null
 
@@ -53,9 +47,11 @@ export abstract class BaseFile {
 
     if (opts.overwrite === true) await this.truncate(0)
 
-    this.fileSize = (await this.#fh.getFile()).size
-
     this.accessHandle = await createOPFSAccess()(filePath, this.#fh)
+  }
+
+  async getSize() {
+    return await this.accessHandle?.getSize() ?? 0
   }
 
   protected async getOriginFile() {

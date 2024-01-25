@@ -7,12 +7,12 @@ test('append string to TextFile', async () => {
     overwrite: true
   })
   await tf.append('Hello world!')
-  expect(tf.size).toBe(12)
+  expect(await tf.getSize()).toBe(12)
 
   const str = '我🩷坤坤'
   const txtEC = new TextEncoder()
   await tf.append(str)
-  expect(tf.size).toBe(12 + txtEC.encode(str).byteLength)
+  expect(await tf.getSize()).toBe(12 + txtEC.encode(str).byteLength)
   await tf.remove()
 })
 

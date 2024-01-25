@@ -5,7 +5,7 @@ interface FileSystemSyncAccessHandle {
   flush: () => void
   close: () => void
   truncate: (newSize: number) => void
-  // getSize: () => number
+  getSize: () => number
 }
 
 type Async<F> = F extends (...args: infer Params) => infer R
@@ -17,6 +17,7 @@ export type OPFSWorkerAccessHandle = {
   write: Async<FileSystemSyncAccessHandle['write']>
   close: Async<FileSystemSyncAccessHandle['close']>
   truncate: Async<FileSystemSyncAccessHandle['truncate']>
+  getSize: Async<FileSystemSyncAccessHandle['getSize']>
 }
 
 // todo: 池化 worker 避免创建数量过多
@@ -76,7 +77,10 @@ export function createOPFSAccess() {
       truncate: async (newSize: number) => (await postMsg('truncate', {
         fileName,
         newSize
-      })) as void
+      })) as void,
+      getSize: async () => (await postMsg('getSize', {
+        fileName,
+      })) as number
     }
   }
 }
@@ -110,6 +114,8 @@ const opfsWorkerSetup = (): void => {
       // @ts-expect-error transfer support by chrome 114
       returnVal = buf.transfer?.(readLen) ?? buf.slice(0, readLen)
       trans.push(returnVal)
+    } else if (evtType === 'getSize') {
+      returnVal = accessHandle.getSize()
     }
 
     self.postMessage(
