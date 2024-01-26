@@ -1,7 +1,6 @@
 import { OPFSWorkerAccessHandle, createOPFSAccess } from "./access-worker"
 
 export interface FileOpts {
-  create?: boolean
   overwrite?: boolean
 }
 
@@ -43,7 +42,9 @@ export abstract class BaseFile {
   async #init(filePath: string, opts: FileOpts) {
     const dir = await makeParent(filePath)
     this.parent = dir
-    this.#fh = await dir.getFileHandle(this.name, opts)
+    this.#fh = await dir.getFileHandle(this.name, {
+      create: true,
+    })
 
     if (opts.overwrite === true) await this.truncate(0)
 

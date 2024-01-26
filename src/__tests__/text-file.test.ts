@@ -3,7 +3,6 @@ import { TextFile } from '../text-file'
 
 test('append string to TextFile', async () => {
   const tf = new TextFile('/unit-test/test1.txt', {
-    create: true,
     overwrite: true
   })
   await tf.append('Hello world!')
@@ -18,7 +17,6 @@ test('append string to TextFile', async () => {
 
 test('read the text file line by line', async () => {
   const tf = new TextFile('/unit-test/test2.txt', {
-    create: true,
     overwrite: true
   })
   await tf.append('Hello world!\n')
@@ -36,7 +34,6 @@ test('read the text file line by line', async () => {
 
 test('read text file as a string', async () => {
   const tf = new TextFile('/unit-test/test3.txt', {
-    create: true,
     overwrite: true
   })
   await tf.append('Hello world!\n')
@@ -50,7 +47,6 @@ test('read text file as a string', async () => {
 
 test('empty file', async () => {
   const tf = new TextFile('/unit-test/test4.txt', {
-    create: true,
     overwrite: true
   })
   await tf.append('Hello world!')
