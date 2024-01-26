@@ -51,10 +51,12 @@ export abstract class BaseFile {
   }
 
   async getSize() {
+    await this.initReady
     return await this.accessHandle?.getSize() ?? 0
   }
 
-  protected async getOriginFile() {
+  async getOriginFile() {
+    await this.initReady
     return await this.#fh?.getFile()
   }
 
@@ -71,6 +73,7 @@ export abstract class BaseFile {
    * When a file is no longer in use, it is necessary to call the close method.
    */
   async close() {
+    await this.initReady
     await this.accessHandle?.close()
   }
 }
