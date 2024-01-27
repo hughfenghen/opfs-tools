@@ -46,9 +46,9 @@ export abstract class BaseFile {
       create: true,
     })
 
-    if (opts.overwrite === true) await this.truncate(0)
-
     this.accessHandle = await createOPFSAccess()(filePath, this.#fh)
+
+    if (opts.overwrite === true) await this.accessHandle.truncate(0)
   }
 
   async getSize() {

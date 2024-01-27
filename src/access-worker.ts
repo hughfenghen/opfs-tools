@@ -1,7 +1,7 @@
 
 interface FileSystemSyncAccessHandle {
   read: (container: ArrayBuffer, opts: { at: number }) => number
-  write: (data: ArrayBuffer, opts: { at: number }) => number
+  write: (data: ArrayBuffer | ArrayBufferView, opts?: { at: number }) => number
   flush: () => void
   close: () => void
   truncate: (newSize: number) => void
@@ -70,7 +70,7 @@ export function createOPFSAccess() {
           fileName,
           data,
           opts
-        }, [data])) as number,
+        }, [ArrayBuffer.isView(data) ? data.buffer : data])) as number,
       close: async () => (await postMsg('close', {
         fileName,
       })) as void,
