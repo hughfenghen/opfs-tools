@@ -6,7 +6,7 @@ export interface FileOpts {
 
 
 async function makeParent(filePath: string) {
-  if (!filePath.startsWith('/')) throw Error('The path must begin with the "/" character')
+  if (!filePath.startsWith('/')) filePath = `/${filePath}`
 
   const root = await navigator.storage.getDirectory()
   const paths = filePath
@@ -55,11 +55,6 @@ export abstract class BaseFile {
   async getSize() {
     await this.initReady
     return await this.accessHandle?.getSize() ?? 0
-  }
-
-  async getOriginFile() {
-    await this.initReady
-    return await this.#fh?.getFile()
   }
 
   async truncate(newSize: number) {
