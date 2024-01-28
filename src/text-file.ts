@@ -63,7 +63,7 @@ export class TextFile extends BaseFile {
   async text() {
     const txtDC = new TextDecoder()
     return txtDC.decode(
-      await (await this.getOriginFile())?.arrayBuffer()
+      await this.accessHandle?.read(0, await this.getSize())
     )
   }
 }
