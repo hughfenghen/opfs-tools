@@ -4,11 +4,11 @@ export interface FileOpts {
   overwrite?: boolean
 }
 
-const root = await navigator.storage.getDirectory()
 
 async function makeParent(filePath: string) {
   if (!filePath.startsWith('/')) throw Error('The path must begin with the "/" character')
 
+  const root = await navigator.storage.getDirectory()
   const paths = filePath
     .split('/')
     .slice(1, -1)

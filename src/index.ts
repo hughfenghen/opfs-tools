@@ -2,10 +2,10 @@
 export { TextFile } from './text-file'
 export { BinaryFile } from './binary-file'
 
-const root = await navigator.storage.getDirectory()
 export async function exists(filePath: string) {
   if (!filePath.startsWith('/')) throw Error('The path must begin with the "/" character')
 
+  const root = await navigator.storage.getDirectory()
   const paths = filePath.split('/')
   const dirNames = paths.slice(1, -1)
   const fileName = paths.at(-1) as string

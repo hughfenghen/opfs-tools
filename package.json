@@ -1,14 +1,36 @@
 {
   "name": "opfs-tools",
-  "private": true,
-  "version": "0.0.0",
+  "keywords": [
+    "OPFS",
+    "fs",
+    "filesystem",
+    "file",
+    "read",
+    "write",
+    "browser",
+    "Web",
+    "opfs-tools",
+    "tools",
+    "TextFile",
+    "BinaryFile",
+    "文件系统",
+    "文件读写",
+    "工具"
+  ],
+  "version": "0.1.0",
   "type": "module",
+  "module": "dist/opfs-tools.js",
+  "main": "dist/opfs-tools.umd.cjs",
+  "types": "dist/index.d.ts",
   "scripts": {
     "dev": "vite demo",
     "test": "vitest",
-    "build": "tsc && vite build",
+    "build": "vite build && tsc -p tsconfig.build.json",
     "preview": "vite preview"
   },
+  "files": [
+    "dist"
+  ],
   "devDependencies": {
     "@vitest/browser": "^1.2.1",
     "typescript": "^5.2.2",
