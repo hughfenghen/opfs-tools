@@ -6,11 +6,12 @@ export interface FileOpts {
 
 const root = await navigator.storage.getDirectory()
 
-async function makeParent(fileName: string) {
-  const paths = fileName
+async function makeParent(filePath: string) {
+  if (!filePath.startsWith('/')) throw Error('The path must begin with the "/" character')
+
+  const paths = filePath
     .split('/')
-    .filter(s => s.length > 0)
-    .slice(0, -1)
+    .slice(1, -1)
   let dirHandle
   for (const p of paths) {
     dirHandle = await root.getDirectoryHandle(p, { create: true })
