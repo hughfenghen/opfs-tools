@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OPFS Tools</title>
+</head>
+
+<body>
+  <h2>Write</h2>
+  <p>Write 100KB of data in one operation, repeat it 1000 times, for a total of 100MB.</p>
+  <div>
+    <label>built-in Writer:</label>
+    <strong id="built-in-writer-cost"></strong>
+  </div>
+  <div>
+    <label>OPFS Tools:</label>
+    <strong id="opfs-tools-writer-cost"></strong>
+  </div>
+  <h2>Read</h2>
+  <p>Read 100KB in a single operation, perform 10000 reads with random positions.</p>
+  <div>
+    <label>File slice:</label>
+    <strong id="file-slice-read-cost"></strong>
+  </div>
+  <div>
+    <label>OPFS Tools:</label>
+    <strong id="opfs-tools-read-cost"></strong>
+  </div>
+  <p></p>
+  <strong id="status">Running...</strong>
+  <script src="./benchmark.ts" type="module"></script>
+</body>
+
+</html>
