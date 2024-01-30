@@ -71,7 +71,7 @@ export function createOPFSAccess() {
           fileName,
           data,
           opts
-        }, [])) as number,
+        }, [ArrayBuffer.isView(data) ? data.buffer : data])) as number,
       close: async () => (await postMsg('close', {
         fileName,
       })) as void,

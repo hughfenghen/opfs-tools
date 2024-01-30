@@ -22,14 +22,12 @@ await writer.truncate(0)
 await writer.close()
 
 let bf = new BinaryFile('testfile')
-let offset = 0
+const bfWriter = await bf.createWriter()
 startTime = performance.now()
 for (const d of writeData) {
-  await bf.write(offset, d)
-  offset += d.byteLength
+  await bfWriter.write(d)
 }
-
-await bf.flush()
+bfWriter.close()
 getElById('opfs-tools-writer-cost').textContent = `${~~(performance.now() - startTime)}ms`
 
 await bf.close()

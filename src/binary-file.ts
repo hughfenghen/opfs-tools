@@ -18,6 +18,24 @@ export class BinaryFile extends BaseFile {
     })!
   }
 
+  async createWriter(initOffset?: number) {
+    await this.initReady
+    let offset = initOffset ?? 0
+    return {
+      write: async (data: ArrayBuffer | ArrayBufferView) => {
+        const len = data.byteLength
+        const rs = await this.accessHandle?.write(data, {
+          at: offset
+        })
+        offset += len
+        return rs
+      },
+      close: async () => {
+        await this.accessHandle?.flush()
+      }
+    }
+  }
+
   async append(data: ArrayBuffer | ArrayBufferView) {
     await this.initReady
     await this.accessHandle?.write(data, {
