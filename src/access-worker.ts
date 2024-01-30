@@ -14,7 +14,7 @@ type Async<F> = F extends (...args: infer Params) => infer R
 
 export type OPFSWorkerAccessHandle = {
   read: (offset: number, size: number) => Promise<ArrayBuffer>
-  write: (data: ArrayBuffer | ArrayBufferView, opts?: { at: number, flush?: boolean }) => Promise<number>
+  write: Async<FileSystemSyncAccessHandle['write']>
   close: Async<FileSystemSyncAccessHandle['close']>
   truncate: Async<FileSystemSyncAccessHandle['truncate']>
   getSize: Async<FileSystemSyncAccessHandle['getSize']>
@@ -110,7 +110,6 @@ const opfsWorkerSetup = (): void => {
     } else if (evtType === 'write') {
       const { data, opts } = e.data.args
       returnVal = accessHandle.write(data, opts)
-      if (opts.flush === true) accessHandle.flush()
     } else if (evtType === 'read') {
       const { offset, size } = e.data.args
       const buf = new ArrayBuffer(size)

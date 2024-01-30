@@ -39,8 +39,8 @@ export class BinaryFile extends BaseFile {
   async append(data: ArrayBuffer | ArrayBufferView) {
     await this.initReady
     await this.accessHandle?.write(data, {
-      at: await this.getSize(),
-      flush: true
+      at: await this.getSize()
     })
+    await this.accessHandle?.flush()
   }
 }
