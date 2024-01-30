@@ -58,7 +58,13 @@ export abstract class BaseFile {
   }
 
   async truncate(newSize: number) {
+    await this.initReady
     await this.accessHandle?.truncate(newSize)
+  }
+
+  async flush() {
+    await this.initReady
+    await this.accessHandle?.flush()
   }
 
   async remove() {

@@ -56,7 +56,7 @@ export class TextFile extends BaseFile {
     await this.initReady
     await this.accessHandle?.write(
       this.#txtEC.encode(str).buffer,
-      { at: await this.getSize() }
+      { at: await this.getSize(), flush: true }
     )
   }
 

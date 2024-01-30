@@ -11,10 +11,18 @@ export class BinaryFile extends BaseFile {
     return await this.accessHandle?.read(offset, size)!
   }
 
+  async write(offset: number, data: ArrayBuffer | ArrayBufferView) {
+    await this.initReady
+    return await this.accessHandle?.write(data, {
+      at: offset
+    })!
+  }
+
   async append(data: ArrayBuffer | ArrayBufferView) {
     await this.initReady
     await this.accessHandle?.write(data, {
-      at: await this.getSize()
+      at: await this.getSize(),
+      flush: true
     })
   }
 }

@@ -14,10 +14,11 @@ type Async<F> = F extends (...args: infer Params) => infer R
 
 export type OPFSWorkerAccessHandle = {
   read: (offset: number, size: number) => Promise<ArrayBuffer>
-  write: Async<FileSystemSyncAccessHandle['write']>
+  write: (data: ArrayBuffer | ArrayBufferView, opts?: { at: number, flush?: boolean }) => Promise<number>
   close: Async<FileSystemSyncAccessHandle['close']>
   truncate: Async<FileSystemSyncAccessHandle['truncate']>
   getSize: Async<FileSystemSyncAccessHandle['getSize']>
+  flush: Async<FileSystemSyncAccessHandle['flush']>
 }
 
 // todo: 池化 worker 避免创建数量过多
@@ -70,7 +71,7 @@ export function createOPFSAccess() {
           fileName,
           data,
           opts
-        }, [ArrayBuffer.isView(data) ? data.buffer : data])) as number,
+        }, [])) as number,
       close: async () => (await postMsg('close', {
         fileName,
       })) as void,
@@ -80,7 +81,10 @@ export function createOPFSAccess() {
       })) as void,
       getSize: async () => (await postMsg('getSize', {
         fileName,
-      })) as number
+      })) as number,
+      flush: async () => (await postMsg('flush', {
+        fileName,
+      })) as void
     }
   }
 }
@@ -106,7 +110,7 @@ const opfsWorkerSetup = (): void => {
     } else if (evtType === 'write') {
       const { data, opts } = e.data.args
       returnVal = accessHandle.write(data, opts)
-      accessHandle.flush()
+      if (opts.flush === true) accessHandle.flush()
     } else if (evtType === 'read') {
       const { offset, size } = e.data.args
       const buf = new ArrayBuffer(size)
@@ -116,6 +120,8 @@ const opfsWorkerSetup = (): void => {
       trans.push(returnVal)
     } else if (evtType === 'getSize') {
       returnVal = accessHandle.getSize()
+    } else if (evtType === 'flush') {
+      accessHandle.flush()
     }
 
     self.postMessage(

@@ -6,12 +6,12 @@ function getElById(id: string): HTMLElement {
 
 const root = await navigator.storage.getDirectory()
 const testFileHandle = await root.getFileHandle('testfile', { create: true })
-const writer = await testFileHandle.createWritable()
 
 // Write 100KB of data in one operation, repeat it 1000 times, for a total of 100MB.
 const writeData = Array(1000).fill(true).map(() => new Uint8Array(Array(1024 * 100).fill(1)))
 
 let startTime = performance.now()
+const writer = await testFileHandle.createWritable()
 for (const d of writeData) {
   await writer.write(d)
 }
@@ -22,13 +22,17 @@ await writer.truncate(0)
 await writer.close()
 
 let bf = new BinaryFile('testfile')
+let offset = 0
 startTime = performance.now()
 for (const d of writeData) {
-  await bf.append(d)
+  await bf.write(offset, d)
+  offset += d.byteLength
 }
 
-await bf.close()
+await bf.flush()
 getElById('opfs-tools-writer-cost').textContent = `${~~(performance.now() - startTime)}ms`
+
+await bf.close()
 
 const startPoints = Array(10000)
   .fill(true)
