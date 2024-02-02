@@ -1,0 +1,7 @@
+{
+  "editor.formatOnSave": true,
+  "prettier.documentSelectors": [
+    "*.ts",
+    "*.json"
+  ]
+}
