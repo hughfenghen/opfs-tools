@@ -53,16 +53,15 @@ class OPFSWrapFile {
 
     const txtEC = new TextEncoder();
 
+    await accHandle.truncate(0);
     const ws = new WritableStream<string | ArrayBuffer | ArrayBufferView>({
       write: async (chunk) => {
-        await accHandle.truncate(0);
-
         await accHandle.write(
           typeof chunk === 'string' ? txtEC.encode(chunk) : chunk
         );
       },
       close: async () => {
-        await this.close();
+        await this.#close();
       },
     });
 
@@ -74,11 +73,19 @@ class OPFSWrapFile {
     const accHandle = this.#accessHandle!;
     const txtDC = new TextDecoder();
     const rs = txtDC.decode(await accHandle.read(0, await accHandle.getSize()));
-    await this.close();
+    await this.#close();
     return rs;
   }
 
-  async close() {
+  async arrayBuffer() {
+    await this.#init();
+    const accHandle = this.#accessHandle!;
+    const buf = await accHandle.read(0, await accHandle.getSize());
+    await this.#close();
+    return buf;
+  }
+
+  async #close() {
     await this.#init();
     const accHandle = this.#accessHandle!;
     await accHandle.close();
@@ -111,5 +118,4 @@ export async function write(
 ) {
   const f = file(filePath);
   await f.write(content);
-  await f.close();
 }
