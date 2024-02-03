@@ -1,56 +1,62 @@
-import { BinaryFile } from '../src'
+import { BinaryFile, file } from '../src';
 
 function getElById(id: string): HTMLElement {
-  return document.getElementById(id) as HTMLElement
+  return document.getElementById(id) as HTMLElement;
 }
 
-const root = await navigator.storage.getDirectory()
-const testFileHandle = await root.getFileHandle('testfile', { create: true })
+const root = await navigator.storage.getDirectory();
+const testFileHandle = await root.getFileHandle('testfile', { create: true });
 
 // Write 100KB of data in one operation, repeat it 1000 times, for a total of 100MB.
-const writeData = Array(1000).fill(true).map(() => new Uint8Array(Array(1024 * 100).fill(1)))
+const writeData = Array(1000)
+  .fill(true)
+  .map(() => new Uint8Array(Array(1024 * 100).fill(1)));
 
-let startTime = performance.now()
-const writer = await testFileHandle.createWritable()
+let startTime = performance.now();
+const writer1 = await testFileHandle.createWritable();
 for (const d of writeData) {
-  await writer.write(d)
+  await writer1.write(d);
 }
 
-getElById('built-in-writer-cost').textContent = `${~~(performance.now() - startTime)}ms`
+getElById('built-in-writer-cost').textContent = `${~~(
+  performance.now() - startTime
+)}ms`;
 
-await writer.truncate(0)
-await writer.close()
+await writer1.truncate(0);
+await writer1.close();
 
-let bf = new BinaryFile('testfile')
-const bfWriter = await bf.createWriter()
-startTime = performance.now()
+const writer2 = await file('testfile').createWriter();
+startTime = performance.now();
 for (const d of writeData) {
-  await bfWriter.write(d)
+  await writer2.write(d);
 }
-bfWriter.close()
-getElById('opfs-tools-writer-cost').textContent = `${~~(performance.now() - startTime)}ms`
-
-await bf.close()
+await writer2.close();
+getElById('opfs-tools-writer-cost').textContent = `${~~(
+  performance.now() - startTime
+)}ms`;
 
 const startPoints = Array(10000)
   .fill(true)
-  .map(() => ~~(Math.random() * 1e5))
+  .map(() => ~~(Math.random() * 1e5));
 
-const file = await testFileHandle.getFile()
-startTime = performance.now()
+const f1 = await testFileHandle.getFile();
+startTime = performance.now();
 for (const p of startPoints) {
-  await file.slice(p, p + 100 * 1024).arrayBuffer()
+  await f1.slice(p, p + 100 * 1024).arrayBuffer();
 }
-getElById('file-slice-read-cost').textContent = `${~~(performance.now() - startTime)}ms`
+getElById('file-slice-read-cost').textContent = `${~~(
+  performance.now() - startTime
+)}ms`;
 
-bf = new BinaryFile('testfile')
-startTime = performance.now()
+const reader = await file('test-file').createReader();
+startTime = performance.now();
 for (const p of startPoints) {
-  await bf.read(p, 100 * 1024)
+  await reader.read(p, 100 * 1024);
 }
-getElById('opfs-tools-read-cost').textContent = `${~~(performance.now() - startTime)}ms`
+getElById('opfs-tools-read-cost').textContent = `${~~(
+  performance.now() - startTime
+)}ms`;
 
+getElById('status').remove();
 
-getElById('status').remove()
-
-export default {}
+export default {};
