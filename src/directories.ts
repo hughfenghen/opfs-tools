@@ -13,3 +13,10 @@ export async function mkdir(dirPath: string) {
     });
   }
 }
+
+// async function mkParents(filePath: string) {
+//   const lastDirPos = filePath.lastIndexOf('/');
+//   const dirPath = lastDirPos === -1 ? '/' : filePath.slice(0, lastDirPos);
+
+//   await mkdir(dirPath);
+// }
