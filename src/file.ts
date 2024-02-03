@@ -41,13 +41,13 @@ class OPFSWrapFile {
   }
 
   async write(content: string | ArrayBuffer | ArrayBufferView) {
-    const writer = await this.createWritable();
+    const writer = await this.createWriter();
     await writer.write(content);
     await writer.close();
   }
 
   // todo: 独占
-  async createWritable() {
+  async createWriter() {
     await this.#init();
     const accHandle = this.#accessHandle!;
 
@@ -66,6 +66,20 @@ class OPFSWrapFile {
     });
 
     return ws.getWriter();
+  }
+
+  async createReader() {
+    await this.#init();
+    const accHandle = this.#accessHandle!;
+
+    return {
+      read: async (offset: number, size: number) => {
+        return await accHandle.read(offset, size);
+      },
+      close: async () => {
+        await this.#close();
+      },
+    };
   }
 
   async text() {
