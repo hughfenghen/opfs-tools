@@ -11,8 +11,6 @@
     "Web",
     "opfs-tools",
     "tools",
-    "TextFile",
-    "BinaryFile",
     "文件系统",
     "文件读写",
     "工具"
