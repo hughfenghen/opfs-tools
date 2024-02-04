@@ -46,8 +46,11 @@ class OPFSWrapFile {
     await writer.close();
   }
 
-  // todo: 独占
+  #writing = false;
   async createWriter() {
+    if (this.#writing) throw Error('Other writer have not been closed');
+    this.#writing = true;
+
     await this.#init();
     const accHandle = this.#accessHandle!;
 

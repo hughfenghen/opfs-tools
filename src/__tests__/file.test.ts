@@ -34,3 +34,11 @@ test('read part of a file', async () => {
   );
   await reader.close();
 });
+
+test('write operation is exclusive', async () => {
+  const f = file(filePath);
+  expect(async () => {
+    await f.createWriter();
+    await f.createWriter();
+  }).rejects.toThrowError(Error('Other writer have not been closed'));
+});
