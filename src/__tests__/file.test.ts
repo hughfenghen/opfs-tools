@@ -37,8 +37,22 @@ test('read part of a file', async () => {
 
 test('write operation is exclusive', async () => {
   const f = file(filePath);
+  const writer = await f.createWriter();
   expect(async () => {
     await f.createWriter();
-    await f.createWriter();
   }).rejects.toThrowError(Error('Other writer have not been closed'));
+
+  await writer.close();
+});
+
+test('read operations can be parallelized', async () => {
+  const str = 'hello world';
+  await write(filePath, 'hello world');
+  const f = file(filePath);
+  const reader = await f.createReader();
+
+  expect(await Promise.all([reader.read(0, 11), f.text()])).toEqual([
+    new TextEncoder().encode(str).buffer,
+    'hello world',
+  ]);
 });

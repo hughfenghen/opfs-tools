@@ -19,7 +19,9 @@ class OPFSWrapFile {
   }
 
   #initPromise: Promise<void> | null = null;
-  async #init() {
+  #referCnt = 0;
+  async #init(needIncRefCnt = true) {
+    if (needIncRefCnt) this.#referCnt += 1;
     if (this.#initPromise != null) return await this.#initPromise;
 
     this.#initPromise = new Promise<void>(async (resolve, reject) => {
@@ -64,6 +66,7 @@ class OPFSWrapFile {
         );
       },
       close: async () => {
+        this.#writing = false;
         await this.#close();
       },
     });
@@ -103,9 +106,11 @@ class OPFSWrapFile {
   }
 
   async #close() {
-    await this.#init();
-    const accHandle = this.#accessHandle!;
-    await accHandle.close();
+    this.#referCnt -= 1;
+    if (this.#referCnt > 0) return;
+
+    await this.#init(false);
+    await this.#accessHandle!.close();
     this.#initPromise = null;
   }
 }
@@ -125,8 +130,12 @@ async function getDirHandle(dirPath: string) {
   return dirHandle;
 }
 
+// todo: remove file from cache
+const fileCache = new Map<string, OPFSWrapFile>();
 export function file(filePath: string) {
-  return new OPFSWrapFile(filePath);
+  const f = fileCache.get(filePath) ?? new OPFSWrapFile(filePath);
+  fileCache.set(filePath, f);
+  return f;
 }
 
 export async function write(
