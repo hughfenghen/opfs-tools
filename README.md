@@ -9,17 +9,21 @@ In development, will reference the API design of [Bun File I/O](https://bun.sh/d
 ## Features
 
 - [ ] Reading files
-  - [ ] file
-  - [ ] text
+  - [x] create file
+  - [x] text
   - [ ] stream
-  - [ ] arrayBuffer
+  - [x] arrayBuffer
+  - [x] file.createReader
 - Writing files
-  - [ ] write
+  - [x] write string/ArrayBuffer/ArrayBufferView
+  - [ ] write Response
+  - [ ] write ReadableStream
 - Incremental writing with FileSink
-  - [ ] file.writer
-  - [ ] writer.write
+  - [x] file.createWriter
+  - [x] writer.write
   - [ ] writer.flush
-  - [ ] writer.end
+  - [x] writer.close
 - Directories
   - [ ] readdir
-  - [ ] mkdir
+  - [x] mkdir
+  - [x] exists
