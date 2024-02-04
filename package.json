@@ -1,5 +1,6 @@
 {
   "name": "opfs-tools",
+  "repository": "https://github.com/hughfenghen/opfs-tools",
   "keywords": [
     "OPFS",
     "fs",
@@ -15,7 +16,7 @@
     "文件读写",
     "工具"
   ],
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "module": "dist/opfs-tools.js",
   "main": "dist/opfs-tools.umd.cjs",
@@ -24,6 +25,7 @@
     "dev": "vite demo",
     "test": "vitest",
     "build": "vite build && tsc -p tsconfig.build.json",
+    "prepublishOnly": "yarn build",
     "preview": "vite preview"
   },
   "files": [
