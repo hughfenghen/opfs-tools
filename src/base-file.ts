@@ -42,7 +42,7 @@ export abstract class BaseFile {
       create: true,
     });
 
-    this.accessHandle = await createOPFSAccess()(filePath, this.#fh);
+    this.accessHandle = await createOPFSAccess(filePath, this.#fh);
 
     if (opts.overwrite === true) await this.accessHandle.truncate(0);
   }

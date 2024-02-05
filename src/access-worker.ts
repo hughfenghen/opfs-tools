@@ -20,88 +20,104 @@ export type OPFSWorkerAccessHandle = {
   flush: Async<FileSystemSyncAccessHandle['flush']>;
 };
 
-// todo: 池化 worker 避免创建数量过多
-export function createOPFSAccess() {
-  const blob = new Blob([`(${opfsWorkerSetup.toString()})()`]);
-  const url = URL.createObjectURL(blob);
-  const worker = new Worker(url);
+export async function createOPFSAccess(
+  filePath: string,
+  fileHandle: FileSystemFileHandle
+): Promise<OPFSWorkerAccessHandle> {
+  const postMsg = getWorkerMsger();
+  await postMsg('register', { fileName: filePath, fileHandle });
+  return {
+    read: async (offset, size) =>
+      (await postMsg('read', {
+        fileName: filePath,
+        offset,
+        size,
+      })) as ArrayBuffer,
+    write: async (data, opts) =>
+      (await postMsg(
+        'write',
+        {
+          fileName: filePath,
+          data,
+          opts,
+        },
+        [ArrayBuffer.isView(data) ? data.buffer : data]
+      )) as number,
+    close: async () =>
+      (await postMsg('close', {
+        fileName: filePath,
+      })) as void,
+    truncate: async (newSize: number) =>
+      (await postMsg('truncate', {
+        fileName: filePath,
+        newSize,
+      })) as void,
+    getSize: async () =>
+      (await postMsg('getSize', {
+        fileName: filePath,
+      })) as number,
+    flush: async () =>
+      (await postMsg('flush', {
+        fileName: filePath,
+      })) as void,
+  };
+}
 
-  let cbId = 0;
-  let cbFns: Record<number, Function> = {};
-  async function postMsg(
-    evtType: string,
-    args: unknown,
-    trans: Transferable[] = [],
-  ) {
-    cbId += 1;
-
-    const rsP = new Promise((resolve) => {
-      cbFns[cbId] = resolve;
-    });
-    worker.postMessage(
-      {
-        cbId,
-        evtType,
-        args,
-      },
-      trans,
-    );
-
-    return rsP;
+const msgerCache: Array<Function> = [];
+let nextMsgerIdx = 0;
+function getWorkerMsger() {
+  // Create a maximum of three workers
+  if (msgerCache.length < 3) {
+    const msger = create();
+    msgerCache.push(msger);
+    return msger;
+  } else {
+    const msger = msgerCache[nextMsgerIdx];
+    nextMsgerIdx = (nextMsgerIdx + 1) % msgerCache.length;
+    return msger;
   }
 
-  worker.onmessage = ({
-    data,
-  }: {
-    data: { cbId: number; returnVal: unknown; evtType: string };
-  }) => {
-    if (data.evtType === 'callback') {
-      cbFns[data.cbId]?.(data.returnVal);
-      delete cbFns[data.cbId];
-    }
-  };
+  function create() {
+    const blob = new Blob([`(${opfsWorkerSetup.toString()})()`]);
+    const url = URL.createObjectURL(blob);
+    const worker = new Worker(url);
 
-  return async (
-    filePath: string,
-    fileHandle: FileSystemFileHandle,
-  ): Promise<OPFSWorkerAccessHandle> => {
-    await postMsg('register', { fileName: filePath, fileHandle });
-    return {
-      read: async (offset, size) =>
-        (await postMsg('read', {
-          fileName: filePath,
-          offset,
-          size,
-        })) as ArrayBuffer,
-      write: async (data, opts) =>
-        (await postMsg(
-          'write',
-          {
-            fileName: filePath,
-            data,
-            opts,
-          },
-          [ArrayBuffer.isView(data) ? data.buffer : data],
-        )) as number,
-      close: async () =>
-        (await postMsg('close', {
-          fileName: filePath,
-        })) as void,
-      truncate: async (newSize: number) =>
-        (await postMsg('truncate', {
-          fileName: filePath,
-          newSize,
-        })) as void,
-      getSize: async () =>
-        (await postMsg('getSize', {
-          fileName: filePath,
-        })) as number,
-      flush: async () =>
-        (await postMsg('flush', {
-          fileName: filePath,
-        })) as void,
+    let cbId = 0;
+    let cbFns: Record<number, Function> = {};
+
+    worker.onmessage = ({
+      data,
+    }: {
+      data: { cbId: number; returnVal: unknown; evtType: string };
+    }) => {
+      if (data.evtType === 'callback') {
+        cbFns[data.cbId]?.(data.returnVal);
+        delete cbFns[data.cbId];
+      }
     };
-  };
+
+    return async function postMsg(
+      evtType: string,
+      args: unknown,
+      trans: Transferable[] = []
+    ) {
+      cbId += 1;
+
+      const rsP = new Promise((resolve) => {
+        cbFns[cbId] = resolve;
+      });
+      worker.postMessage(
+        {
+          cbId,
+          evtType,
+          args,
+        },
+        trans
+      );
+
+      return rsP;
+    };
+  }
 }
 
 const opfsWorkerSetup = (): void => {
@@ -145,7 +161,7 @@ const opfsWorkerSetup = (): void => {
         returnVal,
       },
       // @ts-expect-error
-      trans,
+      trans
     );
   };
 };

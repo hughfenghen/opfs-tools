@@ -1,4 +1,4 @@
-export async function mkdir(dirPath: string) {
+export async function mkdirAndReturnHandle(dirPath: string) {
   if (!dirPath.startsWith('/')) dirPath = `/${dirPath}`;
 
   let dirHandle = await navigator.storage.getDirectory();
@@ -12,6 +12,12 @@ export async function mkdir(dirPath: string) {
       create: true,
     });
   }
+
+  return dirHandle;
+}
+
+export async function mkdir(dirPath: string) {
+  await mkdirAndReturnHandle(dirPath);
 }
 
 // async function mkParents(filePath: string) {

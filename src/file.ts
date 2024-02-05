@@ -1,5 +1,5 @@
 import { OPFSWorkerAccessHandle, createOPFSAccess } from './access-worker';
-import { mkdir } from './directories';
+import { mkdirAndReturnHandle } from './directories';
 
 class OPFSWrapFile {
   get size() {
@@ -26,13 +26,12 @@ class OPFSWrapFile {
 
     this.#initPromise = new Promise<void>(async (resolve, reject) => {
       try {
-        await mkdir(this.#dirPath);
-        const dir = await getDirHandle(this.#dirPath);
+        const dir = await mkdirAndReturnHandle(this.#dirPath);
         const fh = await dir.getFileHandle(this.#fileName, {
           create: true,
         });
 
-        this.#accessHandle = await createOPFSAccess()(this.filePath, fh);
+        this.#accessHandle = await createOPFSAccess(this.filePath, fh);
         resolve();
       } catch (err) {
         reject(err);
@@ -112,22 +111,8 @@ class OPFSWrapFile {
     await this.#init(false);
     this.#initPromise = null;
     await this.#accessHandle!.close();
+    this.#accessHandle = null;
   }
-}
-
-async function getDirHandle(dirPath: string) {
-  if (!dirPath.startsWith('/')) dirPath = `/${dirPath}`;
-
-  let dirHandle = await navigator.storage.getDirectory();
-  const paths = dirPath
-    .split('/')
-    .slice(1)
-    .filter((s) => s.length > 0);
-
-  for (const p of paths) {
-    dirHandle = await dirHandle.getDirectoryHandle(p);
-  }
-  return dirHandle;
 }
 
 // todo: remove file from cache
