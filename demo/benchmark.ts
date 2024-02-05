@@ -1,4 +1,4 @@
-import { BinaryFile, file } from '../src';
+import { file } from '../src';
 
 function getElById(id: string): HTMLElement {
   return document.getElementById(id) as HTMLElement;
