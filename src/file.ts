@@ -62,12 +62,12 @@ class OPFSWrapFile {
     const ws = new WritableStream<string | ArrayBuffer | ArrayBufferView>({
       write: async (chunk) => {
         await accHandle.write(
-          typeof chunk === 'string' ? txtEC.encode(chunk) : chunk,
+          typeof chunk === 'string' ? txtEC.encode(chunk) : chunk
         );
       },
       close: async () => {
         this.#writing = false;
-        await this.#close();
+        await this.#clear();
       },
     });
 
@@ -83,7 +83,7 @@ class OPFSWrapFile {
         return await accHandle.read(offset, size);
       },
       close: async () => {
-        await this.#close();
+        await this.#clear();
       },
     };
   }
@@ -93,7 +93,7 @@ class OPFSWrapFile {
     const accHandle = this.#accessHandle!;
     const txtDC = new TextDecoder();
     const rs = txtDC.decode(await accHandle.read(0, await accHandle.getSize()));
-    await this.#close();
+    await this.#clear();
     return rs;
   }
 
@@ -101,17 +101,17 @@ class OPFSWrapFile {
     await this.#init();
     const accHandle = this.#accessHandle!;
     const buf = await accHandle.read(0, await accHandle.getSize());
-    await this.#close();
+    await this.#clear();
     return buf;
   }
 
-  async #close() {
+  async #clear() {
     this.#referCnt -= 1;
     if (this.#referCnt > 0) return;
 
     await this.#init(false);
-    await this.#accessHandle!.close();
     this.#initPromise = null;
+    await this.#accessHandle!.close();
   }
 }
 
@@ -140,7 +140,7 @@ export function file(filePath: string) {
 
 export async function write(
   filePath: string,
-  content: string | ArrayBuffer | ArrayBuffer,
+  content: string | ArrayBuffer | ArrayBuffer
 ) {
   const f = file(filePath);
   await f.write(content);
