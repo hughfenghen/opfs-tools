@@ -2,10 +2,6 @@ import { OPFSWorkerAccessHandle, createOPFSAccess } from './access-worker';
 import { mkdirAndReturnHandle } from './directories';
 
 class OPFSWrapFile {
-  get size() {
-    return 0;
-  }
-
   #dirPath: string;
   #fileName: string;
 
@@ -39,6 +35,16 @@ class OPFSWrapFile {
     });
 
     return await this.#initPromise;
+  }
+
+  async #clear() {
+    this.#referCnt -= 1;
+    if (this.#referCnt > 0) return;
+
+    await this.#init(false);
+    this.#initPromise = null;
+    await this.#accessHandle!.close();
+    this.#accessHandle = null;
   }
 
   async write(content: string | ArrayBuffer | ArrayBufferView) {
@@ -104,14 +110,9 @@ class OPFSWrapFile {
     return buf;
   }
 
-  async #clear() {
-    this.#referCnt -= 1;
-    if (this.#referCnt > 0) return;
-
-    await this.#init(false);
-    this.#initPromise = null;
-    await this.#accessHandle!.close();
-    this.#accessHandle = null;
+  async getSize() {
+    await this.#init();
+    return this.#accessHandle!.getSize();
   }
 }
 

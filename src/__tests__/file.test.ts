@@ -56,3 +56,11 @@ test('read operations can be parallelized', async () => {
     'hello world',
   ]);
 });
+
+test('get file size', async () => {
+  const str = 'I 🩷 坤坤\n';
+  await write(filePath, str);
+  expect(await file(filePath).getSize()).toBe(
+    new TextEncoder().encode(str).byteLength // => 14
+  );
+});
