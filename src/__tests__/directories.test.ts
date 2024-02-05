@@ -8,7 +8,7 @@ test('mkdir', async () => {
   const dirA = await root.getDirectoryHandle('a');
   const dirB = await dirA.getDirectoryHandle('b');
   expect(await dirB.getDirectoryHandle('c')).toBeInstanceOf(
-    FileSystemDirectoryHandle
+    FileSystemDirectoryHandle,
   );
 });
 

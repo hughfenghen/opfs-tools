@@ -31,7 +31,7 @@ export function createOPFSAccess() {
   async function postMsg(
     evtType: string,
     args: unknown,
-    trans: Transferable[] = []
+    trans: Transferable[] = [],
   ) {
     cbId += 1;
 
@@ -44,7 +44,7 @@ export function createOPFSAccess() {
         evtType,
         args,
       },
-      trans
+      trans,
     );
 
     return rsP;
@@ -63,7 +63,7 @@ export function createOPFSAccess() {
 
   return async (
     filePath: string,
-    fileHandle: FileSystemFileHandle
+    fileHandle: FileSystemFileHandle,
   ): Promise<OPFSWorkerAccessHandle> => {
     await postMsg('register', { fileName: filePath, fileHandle });
     return {
@@ -81,7 +81,7 @@ export function createOPFSAccess() {
             data,
             opts,
           },
-          [ArrayBuffer.isView(data) ? data.buffer : data]
+          [ArrayBuffer.isView(data) ? data.buffer : data],
         )) as number,
       close: async () =>
         (await postMsg('close', {
@@ -145,7 +145,7 @@ const opfsWorkerSetup = (): void => {
         returnVal,
       },
       // @ts-expect-error
-      trans
+      trans,
     );
   };
 };

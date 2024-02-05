@@ -21,7 +21,7 @@ test('multiple write operations', async () => {
   await writer.close();
 
   expect(await f.arrayBuffer()).toEqual(
-    new Uint8Array([1, 1, 1, 1, 1, 2, 2, 2, 2, 2]).buffer
+    new Uint8Array([1, 1, 1, 1, 1, 2, 2, 2, 2, 2]).buffer,
   );
 });
 
@@ -30,7 +30,7 @@ test('read part of a file', async () => {
   const reader = await file(filePath).createReader();
 
   expect(await reader.read(3, 5)).toEqual(
-    new Uint8Array([1, 1, 2, 2, 2]).buffer
+    new Uint8Array([1, 1, 2, 2, 2]).buffer,
   );
   await reader.close();
 });
