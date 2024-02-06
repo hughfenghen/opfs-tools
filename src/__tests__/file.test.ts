@@ -57,6 +57,23 @@ test('read operations can be parallelized', async () => {
   ]);
 });
 
+test('file to stream', async () => {
+  const writeData = new Uint8Array(Array(4 * 1024).fill(1));
+  await write(filePath, writeData.slice(0));
+  const stream = await file(filePath).stream();
+  const reader = stream.getReader();
+
+  const readData = new Uint8Array(writeData.byteLength);
+  let pos = 0;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    readData.set(new Uint8Array(value), pos);
+    pos += value.byteLength;
+  }
+  expect(writeData).toEqual(readData);
+});
+
 test('get file size', async () => {
   const str = 'I 🩷 坤坤\n';
   await write(filePath, str);

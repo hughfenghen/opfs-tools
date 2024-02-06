@@ -110,6 +110,29 @@ class OPFSWrapFile {
     return buf;
   }
 
+  async stream() {
+    await this.#init();
+    const readLen = 1024;
+    let pos = 0;
+
+    const reader = await this.createReader();
+
+    return new ReadableStream<ArrayBuffer>({
+      pull: async (ctrl) => {
+        const buf = await reader.read(pos, readLen);
+        if (buf.byteLength === 0) {
+          await reader.close();
+          ctrl.close();
+        }
+        pos += buf.byteLength;
+        ctrl.enqueue(buf);
+      },
+      cancel: async () => {
+        await reader.close();
+      },
+    });
+  }
+
   async getSize() {
     await this.#init();
     return this.#accessHandle!.getSize();
