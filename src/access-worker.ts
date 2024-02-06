@@ -25,11 +25,11 @@ export async function createOPFSAccess(
   fileHandle: FileSystemFileHandle
 ): Promise<OPFSWorkerAccessHandle> {
   const postMsg = getWorkerMsger();
-  await postMsg('register', { fileName: filePath, fileHandle });
+  await postMsg('register', { filePath, fileHandle });
   return {
     read: async (offset, size) =>
       (await postMsg('read', {
-        fileName: filePath,
+        filePath,
         offset,
         size,
       })) as ArrayBuffer,
@@ -37,7 +37,7 @@ export async function createOPFSAccess(
       (await postMsg(
         'write',
         {
-          fileName: filePath,
+          filePath,
           data,
           opts,
         },
@@ -45,20 +45,20 @@ export async function createOPFSAccess(
       )) as number,
     close: async () =>
       (await postMsg('close', {
-        fileName: filePath,
+        filePath,
       })) as void,
     truncate: async (newSize: number) =>
       (await postMsg('truncate', {
-        fileName: filePath,
+        filePath,
         newSize,
       })) as void,
     getSize: async () =>
       (await postMsg('getSize', {
-        fileName: filePath,
+        filePath,
       })) as number,
     flush: async () =>
       (await postMsg('flush', {
-        fileName: filePath,
+        filePath,
       })) as void,
   };
 }
@@ -126,16 +126,16 @@ const opfsWorkerSetup = (): void => {
   self.onmessage = async (e) => {
     const { evtType, args } = e.data;
 
-    let accessHandle = fileAccesserMap[args.fileName];
+    let accessHandle = fileAccesserMap[args.filePath];
 
     let returnVal;
     const trans: Transferable[] = [];
     if (evtType === 'register') {
       accessHandle = await args.fileHandle.createSyncAccessHandle();
-      fileAccesserMap[args.fileName] = accessHandle;
+      fileAccesserMap[args.filePath] = accessHandle;
     } else if (evtType === 'close') {
       accessHandle.close();
-      delete fileAccesserMap[args.fileName];
+      delete fileAccesserMap[args.filePath];
     } else if (evtType === 'truncate') {
       accessHandle.truncate(args.newSize);
     } else if (evtType === 'write') {
