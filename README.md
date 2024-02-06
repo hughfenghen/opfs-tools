@@ -14,14 +14,18 @@ In development, will reference the API design of [Bun File I/O](https://bun.sh/d
   - [ ] stream
   - [x] arrayBuffer
   - [x] file.createReader
+- [x] Random reading
+  - [x] read(pos, size)
+  - [x] close
 - Writing files
-  - [x] write string/ArrayBuffer/ArrayBufferView
-  - [ ] write Response
-  - [ ] write ReadableStream
-- Incremental writing with FileSink
+  - [x] write(dest: string, input: string)
+  - [x] write(dest: string, input: ArrayBuffer | ArrayBufferView)
+  - [ ] write(dest: string, input: ReadableStream)
+- Incremental writing
   - [x] file.createWriter
   - [x] writer.write
   - [ ] writer.flush
+  - [ ] writer.seek
   - [x] writer.close
 - Directories
   - [ ] readdir
