@@ -5,8 +5,6 @@ class OPFSWrapFile {
   #dirPath: string;
   #fileName: string;
 
-  #accessHandle: OPFSWorkerAccessHandle | null = null;
-
   constructor(private filePath: string) {
     const lastDirPos = filePath.lastIndexOf('/');
     this.#dirPath = lastDirPos === -1 ? '/' : filePath.slice(0, lastDirPos);
@@ -14,50 +12,49 @@ class OPFSWrapFile {
       lastDirPos === -1 ? filePath : filePath.slice(lastDirPos + 1);
   }
 
-  #initPromise: Promise<void> | null = null;
-  #referCnt = 0;
-  async #init(needIncRefCnt = true) {
-    if (needIncRefCnt) this.#referCnt += 1;
-    if (this.#initPromise != null) return await this.#initPromise;
+  #getAccessHandle = (() => {
+    let referCnt = 0;
+    let accPromise: Promise<
+      [OPFSWorkerAccessHandle, () => Promise<void>]
+    > | null = null;
 
-    this.#initPromise = new Promise<void>(async (resolve, reject) => {
-      try {
-        const dir = await mkdirAndReturnHandle(this.#dirPath);
-        const fh = await dir.getFileHandle(this.#fileName, {
-          create: true,
-        });
+    return () => {
+      referCnt += 1;
+      if (accPromise != null) return accPromise;
 
-        this.#accessHandle = await createOPFSAccess(this.filePath, fh);
-        resolve();
-      } catch (err) {
-        reject(err);
-      }
-    });
+      return (accPromise = new Promise(async (resolve, reject) => {
+        try {
+          const dir = await mkdirAndReturnHandle(this.#dirPath);
+          const fh = await dir.getFileHandle(this.#fileName, { create: true });
 
-    return await this.#initPromise;
-  }
+          const accHandle = await createOPFSAccess(this.filePath, fh);
+          resolve([
+            accHandle,
+            async () => {
+              referCnt -= 1;
+              if (referCnt > 0) return;
 
-  async #clear() {
-    this.#referCnt -= 1;
-    if (this.#referCnt > 0) return;
-
-    await this.#init(false);
-    this.#initPromise = null;
-    await this.#accessHandle!.close();
-    this.#accessHandle = null;
-  }
+              accPromise = null;
+              await accHandle.close();
+            },
+          ]);
+        } catch (err) {
+          reject(err);
+        }
+      }));
+    };
+  })();
 
   #writing = false;
   async createWriter() {
     if (this.#writing) throw Error('Other writer have not been closed');
     this.#writing = true;
 
-    await this.#init();
-    const accHandle = this.#accessHandle!;
-
     const txtEC = new TextEncoder();
 
     // append content by default
+    // todo: test
+    const [accHandle, unref] = await this.#getAccessHandle();
     let pos = await this.getSize();
     return {
       write: async (chunk: string | BufferSource) => {
@@ -75,20 +72,19 @@ class OPFSWrapFile {
       flush: async () => await accHandle.flush(),
       close: async () => {
         this.#writing = false;
-        await this.#clear();
+        await unref();
       },
     };
   }
 
   async createReader() {
-    await this.#init();
-    const accHandle = this.#accessHandle!;
+    const [accHandle, unref] = await this.#getAccessHandle();
 
     return {
       read: async (offset: number, size: number) =>
         await accHandle.read(offset, size),
       getSize: async () => await accHandle.getSize(),
-      close: async () => await this.#clear(),
+      close: async () => await unref(),
     };
   }
 
@@ -98,7 +94,7 @@ class OPFSWrapFile {
 
   async arrayBuffer() {
     const reader = await this.createReader();
-    const buf = await reader.read(0, await this.#accessHandle!.getSize());
+    const buf = await reader.read(0, await reader.getSize());
     await reader.close();
     return buf;
   }
