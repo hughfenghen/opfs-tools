@@ -11,21 +11,22 @@ In development, will reference the API design of [Bun File I/O](https://bun.sh/d
 - [ ] Reading files
   - [x] create file
   - [x] text
-  - [ ] stream
+  - [x] stream
   - [x] arrayBuffer
-  - [x] file.createReader
 - [x] Random reading
-  - [x] read(pos, size)
-  - [x] close
+  - [x] reader = file.createReader
+  - [x] reader.read(pos, size)
+  - [x] reader.close
 - Writing files
   - [x] write(dest: string, input: string)
   - [x] write(dest: string, input: ArrayBuffer | ArrayBufferView)
-  - [ ] write(dest: string, input: ReadableStream)
-- Incremental writing
-  - [x] file.createWriter
+  - [x] write(dest: string, input: ReadableStream)
+- Random writing
+  - [x] writer = file.createWriter
   - [x] writer.write
-  - [ ] writer.flush
-  - [ ] writer.seek
+  - [x] writer.flush
+  - [x] writer.seek
+  - [x] writer.truncate
   - [x] writer.close
 - Directories
   - [ ] readdir
