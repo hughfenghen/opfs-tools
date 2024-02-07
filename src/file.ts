@@ -47,12 +47,6 @@ class OPFSWrapFile {
     this.#accessHandle = null;
   }
 
-  async write(content: string | ArrayBuffer | ArrayBufferView) {
-    const writer = await this.createWriter();
-    await writer.write(content);
-    await writer.close();
-  }
-
   #writing = false;
   async createWriter() {
     if (this.#writing) throw Error('Other writer have not been closed');
@@ -143,6 +137,7 @@ export async function write(
   filePath: string,
   content: string | ArrayBuffer | ArrayBuffer
 ) {
-  const f = file(filePath);
-  await f.write(content);
+  const writer = await file(filePath).createWriter();
+  await writer.write(content);
+  await writer.close();
 }
