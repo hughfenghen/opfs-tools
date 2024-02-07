@@ -30,4 +30,7 @@ In development, will reference the API design of [Bun File I/O](https://bun.sh/d
 - Directories
   - [ ] readdir
   - [x] mkdir
+- Basic operations
   - [x] exists
+  - [ ] remove
+  - [ ] copy

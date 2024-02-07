@@ -11,6 +11,14 @@ test('write string to file', async () => {
   expect(await file(filePath).text()).toBe('bar');
 });
 
+test('write stream to file', async () => {
+  await write(
+    filePath,
+    new Blob(['I 🩷 坤坤\n'], { type: 'text/plain' }).stream()
+  );
+  expect(await file(filePath).text()).toBe('I 🩷 坤坤\n');
+});
+
 test('multiple write operations', async () => {
   const f = file(filePath);
   const writer = await f.createWriter();

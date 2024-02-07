@@ -58,7 +58,7 @@ class OPFSWrapFile {
     const txtEC = new TextEncoder();
 
     await accHandle.truncate(0);
-    const ws = new WritableStream<string | ArrayBuffer | ArrayBufferView>({
+    const ws = new WritableStream<string | BufferSource>({
       write: async (chunk) => {
         await accHandle.write(
           typeof chunk === 'string' ? txtEC.encode(chunk) : chunk
@@ -135,9 +135,18 @@ export function file(filePath: string) {
 
 export async function write(
   filePath: string,
-  content: string | ArrayBuffer | ArrayBuffer
+  content: string | BufferSource | ReadableStream<BufferSource>
 ) {
   const writer = await file(filePath).createWriter();
-  await writer.write(content);
+  if (content instanceof ReadableStream) {
+    const reader = content.getReader();
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      await writer.write(value);
+    }
+  } else {
+    await writer.write(content);
+  }
   await writer.close();
 }
