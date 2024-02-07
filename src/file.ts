@@ -84,39 +84,29 @@ class OPFSWrapFile {
     const accHandle = this.#accessHandle!;
 
     return {
-      read: async (offset: number, size: number) => {
-        return await accHandle.read(offset, size);
-      },
-      close: async () => {
-        await this.#clear();
-      },
+      read: async (offset: number, size: number) =>
+        await accHandle.read(offset, size),
+      getSize: async () => await accHandle.getSize(),
+      close: async () => await this.#clear(),
     };
   }
 
   async text() {
-    await this.#init();
-    const accHandle = this.#accessHandle!;
-    const txtDC = new TextDecoder();
-    const rs = txtDC.decode(await accHandle.read(0, await accHandle.getSize()));
-    await this.#clear();
-    return rs;
+    return new TextDecoder().decode(await this.arrayBuffer());
   }
 
   async arrayBuffer() {
-    await this.#init();
-    const accHandle = this.#accessHandle!;
-    const buf = await accHandle.read(0, await accHandle.getSize());
-    await this.#clear();
+    const reader = await this.createReader();
+    const buf = await reader.read(0, await this.#accessHandle!.getSize());
+    await reader.close();
     return buf;
   }
 
   async stream() {
-    await this.#init();
-    const readLen = 1024;
-    let pos = 0;
-
     const reader = await this.createReader();
 
+    const readLen = 1024;
+    let pos = 0;
     return new ReadableStream<ArrayBuffer>({
       pull: async (ctrl) => {
         const buf = await reader.read(pos, readLen);
@@ -134,8 +124,10 @@ class OPFSWrapFile {
   }
 
   async getSize() {
-    await this.#init();
-    return this.#accessHandle!.getSize();
+    const reader = await this.createReader();
+    const size = await reader.getSize();
+    await reader.close();
+    return size;
   }
 }
 
