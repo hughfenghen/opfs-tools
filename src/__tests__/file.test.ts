@@ -23,13 +23,14 @@ test('multiple write operations', async () => {
   const f = file(fp);
   const writer = await f.createWriter();
 
+  await writer.truncate(0);
   await writer.write(new Uint8Array([1, 1, 1, 1, 1]));
   await writer.write(new Uint8Array([2, 2, 2, 2, 2]));
 
   await writer.close();
 
-  expect(await f.arrayBuffer()).toEqual(
-    new Uint8Array([1, 1, 1, 1, 1, 2, 2, 2, 2, 2]).buffer
+  expect(new Uint8Array(await f.arrayBuffer())).toEqual(
+    new Uint8Array([1, 1, 1, 1, 1, 2, 2, 2, 2, 2])
   );
 });
 
@@ -38,10 +39,14 @@ test('read part of a file', async () => {
   await write(fp, new Uint8Array([1, 1, 1, 1, 1, 2, 2, 2, 2, 2]));
   const reader = await file(fp).createReader();
 
-  expect(await reader.read(3, 5)).toEqual(
-    new Uint8Array([1, 1, 2, 2, 2]).buffer
+  expect(new Uint8Array(await reader.read(3, 5))).toEqual(
+    new Uint8Array([1, 1, 2, 2, 2])
   );
   await reader.close();
+
+  expect(async () => {
+    await reader.read(0, 5);
+  }).rejects.toThrowError(Error('Reader is closed'));
 });
 
 test('write operation is exclusive', async () => {
@@ -53,6 +58,10 @@ test('write operation is exclusive', async () => {
   }).rejects.toThrowError(Error('Other writer have not been closed'));
 
   await writer.close();
+
+  expect(async () => {
+    await writer.write('44444');
+  }).rejects.toThrowError(Error('Writer is closed'));
 });
 
 test('read operations can be parallelized', async () => {
@@ -118,8 +127,4 @@ test('random access', async () => {
 
   await reader.close();
   await writer.close();
-
-  expect(async () => {
-    await writer.write('44444');
-  }).rejects.toThrowError(Error('Writer is closed'));
 });

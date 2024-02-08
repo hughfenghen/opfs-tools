@@ -92,15 +92,16 @@ class OPFSWrapFile {
     let closed = false;
     return {
       read: async (offset: number, size: number) => {
-        if (closed) throw Error('Writer is closed');
+        if (closed) throw Error('Reader is closed');
         return await accHandle.read(offset, size);
       },
       getSize: async () => {
-        if (closed) throw Error('Writer is closed');
+        if (closed) throw Error('Reader is closed');
         return await accHandle.getSize();
       },
       close: async () => {
-        if (closed) throw Error('Writer is closed');
+        if (closed) throw Error('Reader is closed');
+        closed = true;
         await unref();
       },
     };
