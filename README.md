@@ -15,7 +15,7 @@ In development, will reference the API design of [Bun File I/O](https://bun.sh/d
   - [x] arrayBuffer
 - [x] Random reading
   - [x] reader = file.createReader
-  - [x] reader.read(pos, size)
+  - [x] reader.read(bufLen, { at }
   - [x] reader.close
 - Writing files
   - [x] write(dest: string, input: string)
@@ -25,7 +25,6 @@ In development, will reference the API design of [Bun File I/O](https://bun.sh/d
   - [x] writer = file.createWriter
   - [x] writer.write
   - [x] writer.flush
-  - [x] writer.seek
   - [x] writer.truncate
   - [x] writer.close
 - Directories
