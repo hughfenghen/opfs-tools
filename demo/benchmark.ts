@@ -51,7 +51,7 @@ getElById('file-slice-read-cost').textContent = `${~~(
 const reader = await file('test-file').createReader();
 startTime = performance.now();
 for (const p of startPoints) {
-  await reader.read(p, 100 * 1024);
+  await reader.read(100 * 1024, { at: p });
 }
 getElById('opfs-tools-read-cost').textContent = `${~~(
   performance.now() - startTime

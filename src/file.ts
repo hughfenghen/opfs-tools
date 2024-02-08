@@ -90,10 +90,14 @@ class OPFSWrapFile {
     const [accHandle, unref] = await this.#getAccessHandle();
 
     let closed = false;
+    let pos = 0;
     return {
-      read: async (offset: number, size: number) => {
+      read: async (size: number, opts: { at?: number } = {}) => {
         if (closed) throw Error('Reader is closed');
-        return await accHandle.read(offset, size);
+        const offset = opts.at ?? pos;
+        const buf = await accHandle.read(offset, size);
+        pos = offset + buf.byteLength;
+        return buf;
       },
       getSize: async () => {
         if (closed) throw Error('Reader is closed');
@@ -113,7 +117,7 @@ class OPFSWrapFile {
 
   async arrayBuffer() {
     const reader = await this.createReader();
-    const buf = await reader.read(0, await reader.getSize());
+    const buf = await reader.read(await reader.getSize(), { at: 0 });
     await reader.close();
     return buf;
   }
@@ -122,15 +126,13 @@ class OPFSWrapFile {
     const reader = await this.createReader();
 
     const readLen = 1024;
-    let pos = 0;
     return new ReadableStream<ArrayBuffer>({
       pull: async (ctrl) => {
-        const buf = await reader.read(pos, readLen);
+        const buf = await reader.read(readLen);
         if (buf.byteLength === 0) {
           await reader.close();
           ctrl.close();
         }
-        pos += buf.byteLength;
         ctrl.enqueue(buf);
       },
       cancel: async () => {
