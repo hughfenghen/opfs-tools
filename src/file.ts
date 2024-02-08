@@ -53,24 +53,33 @@ class OPFSWrapFile {
     const txtEC = new TextEncoder();
 
     // append content by default
-    // todo: test
     const [accHandle, unref] = await this.#getAccessHandle();
     let pos = await this.getSize();
+    let closed = false;
     return {
-      write: async (chunk: string | BufferSource) => {
+      write: async (
+        chunk: string | BufferSource,
+        opts: { at?: number } = {}
+      ) => {
+        if (closed) throw Error('Writer is closed');
         const content = typeof chunk === 'string' ? txtEC.encode(chunk) : chunk;
-        await accHandle.write(content, { at: pos });
-        pos += content.byteLength;
-      },
-      seek: (position: number) => {
-        pos = position;
+        const at = opts.at ?? pos;
+        const contentSize = content.byteLength;
+        await accHandle.write(content, { at });
+        pos = at + contentSize;
       },
       truncate: async (size: number) => {
+        if (closed) throw Error('Writer is closed');
         await accHandle.truncate(size);
         if (pos > size) pos = size;
       },
-      flush: async () => await accHandle.flush(),
+      flush: async () => {
+        if (closed) throw Error('Writer is closed');
+        await accHandle.flush();
+      },
       close: async () => {
+        if (closed) throw Error('Writer is closed');
+        closed = true;
         this.#writing = false;
         await unref();
       },
@@ -80,11 +89,20 @@ class OPFSWrapFile {
   async createReader() {
     const [accHandle, unref] = await this.#getAccessHandle();
 
+    let closed = false;
     return {
-      read: async (offset: number, size: number) =>
-        await accHandle.read(offset, size),
-      getSize: async () => await accHandle.getSize(),
-      close: async () => await unref(),
+      read: async (offset: number, size: number) => {
+        if (closed) throw Error('Writer is closed');
+        return await accHandle.read(offset, size);
+      },
+      getSize: async () => {
+        if (closed) throw Error('Writer is closed');
+        return await accHandle.getSize();
+      },
+      close: async () => {
+        if (closed) throw Error('Writer is closed');
+        await unref();
+      },
     };
   }
 

@@ -94,3 +94,32 @@ test('get file size', async () => {
     new TextEncoder().encode(str).byteLength // => 14
   );
 });
+
+test('random access', async () => {
+  const fp = filePath + '9';
+  const f = file(fp);
+  const reader = await f.createReader();
+  const writer = await f.createWriter();
+
+  await writer.truncate(0);
+  await writer.write('11111');
+
+  const txtDC = new TextDecoder();
+  expect(txtDC.decode(await reader.read(0, 5))).toBe('11111');
+
+  await writer.write('22222', { at: 3 });
+  expect(txtDC.decode(await reader.read(0, 10))).toBe('11122222');
+
+  await writer.write('33333');
+  expect(txtDC.decode(await reader.read(0, 15))).toBe('1112222233333');
+
+  await writer.truncate(0);
+  expect(await reader.getSize()).toBe(0);
+
+  await reader.close();
+  await writer.close();
+
+  expect(async () => {
+    await writer.write('44444');
+  }).rejects.toThrowError(Error('Writer is closed'));
+});
