@@ -1,16 +1,8 @@
 import { OPFSWorkerAccessHandle, createOPFSAccess } from './access-worker';
-import { mkdirAndReturnHandle } from './directories';
+import { getFSHandle, splitDirAndFile } from './common';
 
 class OPFSWrapFile {
-  #dirPath: string;
-  #fileName: string;
-
-  constructor(private filePath: string) {
-    const lastDirPos = filePath.lastIndexOf('/');
-    this.#dirPath = lastDirPos === -1 ? '/' : filePath.slice(0, lastDirPos);
-    this.#fileName =
-      lastDirPos === -1 ? filePath : filePath.slice(lastDirPos + 1);
-  }
+  constructor(private filePath: string) {}
 
   #getAccessHandle = (() => {
     let referCnt = 0;
@@ -24,8 +16,10 @@ class OPFSWrapFile {
 
       return (accPromise = new Promise(async (resolve, reject) => {
         try {
-          const dir = await mkdirAndReturnHandle(this.#dirPath);
-          const fh = await dir.getFileHandle(this.#fileName, { create: true });
+          const fh = (await getFSHandle(this.filePath, {
+            create: true,
+            isFile: true,
+          })) as FileSystemFileHandle;
 
           const accHandle = await createOPFSAccess(this.filePath, fh);
           resolve([
@@ -54,7 +48,7 @@ class OPFSWrapFile {
 
     // append content by default
     const [accHandle, unref] = await this.#getAccessHandle();
-    let pos = await this.getSize();
+    let pos = await accHandle.getSize();
     let closed = false;
     return {
       write: async (
@@ -146,6 +140,26 @@ class OPFSWrapFile {
     const size = await reader.getSize();
     await reader.close();
     return size;
+  }
+
+  async exists() {
+    return (
+      (await getFSHandle(this.filePath, {
+        create: false,
+        isFile: true,
+      })) instanceof FileSystemFileHandle
+    );
+  }
+
+  async remove() {
+    const { dirPath, fileName } = splitDirAndFile(this.filePath, true);
+    const dirHandle = (await getFSHandle(dirPath, {
+      create: false,
+      isFile: false,
+    })) as FileSystemDirectoryHandle | null;
+    if (dirHandle == null) return;
+
+    await dirHandle.removeEntry(fileName);
   }
 }
 

@@ -8,7 +8,7 @@ In development, will reference the API design of [Bun File I/O](https://bun.sh/d
 
 ## Features
 
-- [ ] Reading files
+- [x] Reading files
   - [x] create file
   - [x] text
   - [x] stream
@@ -31,6 +31,6 @@ In development, will reference the API design of [Bun File I/O](https://bun.sh/d
   - [ ] readdir
   - [x] mkdir
 - Basic operations
-  - [x] exists
-  - [ ] remove
+  - [x] file.exists
+  - [x] file.remove
   - [ ] copy

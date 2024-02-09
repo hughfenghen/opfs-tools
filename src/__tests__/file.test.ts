@@ -128,3 +128,13 @@ test('random access', async () => {
   await reader.close();
   await writer.close();
 });
+
+test('file exists', async () => {
+  const f = file(filePath + '10');
+  expect(await f.exists()).toBe(false);
+  // auto create
+  expect(await f.getSize()).toBe(0);
+  expect(await f.exists()).toBe(true);
+
+  await f.remove();
+});

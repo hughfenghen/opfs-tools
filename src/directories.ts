@@ -1,31 +1,8 @@
-export async function mkdirAndReturnHandle(dirPath: string) {
-  if (!dirPath.startsWith('/')) dirPath = `/${dirPath}`;
-
-  let dirHandle = await navigator.storage.getDirectory();
-  const paths = dirPath
-    .split('/')
-    .slice(1)
-    .filter((s) => s.length > 0);
-
-  for (const p of paths) {
-    dirHandle = await dirHandle.getDirectoryHandle(p, {
-      create: true,
-    });
-  }
-
-  return dirHandle;
-}
+import { getFSHandle } from './common';
 
 export async function mkdir(dirPath: string) {
-  await mkdirAndReturnHandle(dirPath);
+  await getFSHandle(dirPath, { create: true, isFile: false });
 }
-
-// async function mkParents(filePath: string) {
-//   const lastDirPos = filePath.lastIndexOf('/');
-//   const dirPath = lastDirPos === -1 ? '/' : filePath.slice(0, lastDirPos);
-
-//   await mkdir(dirPath);
-// }
 
 export async function exists(filePath: string) {
   if (!filePath.startsWith('/'))
