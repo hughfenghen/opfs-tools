@@ -131,6 +131,8 @@ test('random access', async () => {
 
 test('file exists', async () => {
   const f = file(filePath + '10');
+  await f.remove();
+
   expect(await f.exists()).toBe(false);
   // auto create
   expect(await f.getSize()).toBe(0);

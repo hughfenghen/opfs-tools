@@ -1,5 +1,5 @@
 import { OPFSWorkerAccessHandle, createOPFSAccess } from './access-worker';
-import { getFSHandle, splitDirAndFile } from './common';
+import { getFSHandle, parsePath } from './common';
 
 class OPFSWrapFile {
   constructor(private filePath: string) {}
@@ -152,14 +152,18 @@ class OPFSWrapFile {
   }
 
   async remove() {
-    const { dirPath, fileName } = splitDirAndFile(this.filePath, true);
-    const dirHandle = (await getFSHandle(dirPath, {
+    const { parent, name } = parsePath(this.filePath);
+    const dirHandle = (await getFSHandle(parent, {
       create: false,
       isFile: false,
     })) as FileSystemDirectoryHandle | null;
     if (dirHandle == null) return;
 
-    await dirHandle.removeEntry(fileName);
+    try {
+      await dirHandle.removeEntry(name);
+    } catch (err) {
+      // maybe not exists
+    }
   }
 }
 
