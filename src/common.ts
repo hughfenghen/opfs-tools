@@ -1,15 +1,14 @@
-export function splitDirAndFile(path: string, isFile: boolean) {
-  if (!path.startsWith('/')) path = `/${path}`;
+export function parsePath(path: string) {
+  if (path === '/') return { parent: '/', name: '' };
 
-  const lastDirPos = path.lastIndexOf('/');
-  const dirPath = !isFile
-    ? path
-    : lastDirPos <= 0
-    ? '/'
-    : path.slice(0, lastDirPos);
-  const fileName = isFile === true ? path.slice(lastDirPos + 1) : '';
+  const pathArr = path.split('/').filter((s) => s.length > 0);
+  if (pathArr.length === 0) throw Error('Invalid path');
 
-  return { dirPath, fileName };
+  const name = pathArr[pathArr.length - 1];
+
+  const parent = '/' + pathArr.slice(0, -1).join('/');
+
+  return { name, parent };
 }
 
 export async function getFSHandle(
@@ -17,14 +16,11 @@ export async function getFSHandle(
   opts: {
     create?: boolean;
     isFile?: boolean;
-  } = {}
+  }
 ) {
-  const { dirPath, fileName } = splitDirAndFile(path, opts.isFile ?? false);
+  const { parent, name } = parsePath(path);
 
-  const dirPaths = dirPath
-    .split('/')
-    .slice(1)
-    .filter((s) => s.length > 0);
+  const dirPaths = parent.split('/').filter((s) => s.length > 0);
 
   try {
     let dirHandle = await navigator.storage.getDirectory();
@@ -33,10 +29,11 @@ export async function getFSHandle(
         create: opts.create,
       });
     }
-    if (fileName.length > 0) {
-      return await dirHandle.getFileHandle(fileName, { create: opts.create });
+    if (opts.isFile) {
+      return await dirHandle.getFileHandle(name, { create: opts.create });
+    } else {
+      return await dirHandle.getDirectoryHandle(name, { create: opts.create });
     }
-    return dirHandle;
   } catch (err) {
     return null;
   }
