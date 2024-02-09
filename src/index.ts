@@ -1,2 +1,2 @@
 export { file, write } from './file';
-export { dir } from './directories';
+export { dir } from './directory';

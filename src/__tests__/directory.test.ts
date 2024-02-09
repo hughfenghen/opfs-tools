@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { dir } from '../directories';
+import { dir } from '../directory';
 
 const filePath = '/unit-test/dir';
 
