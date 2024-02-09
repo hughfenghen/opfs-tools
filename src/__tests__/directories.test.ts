@@ -1,27 +1,13 @@
 import { expect, test } from 'vitest';
-import { exists, mkdir } from '../directories';
-import { file } from '../file';
+import { dir } from '../directories';
 
-test('mkdir', async () => {
-  await mkdir('/a/b/c');
-  const root = await navigator.storage.getDirectory();
-  const dirA = await root.getDirectoryHandle('a');
-  const dirB = await dirA.getDirectoryHandle('b');
-  expect(await dirB.getDirectoryHandle('c')).toBeInstanceOf(
-    FileSystemDirectoryHandle,
-  );
+const filePath = '/unit-test/dir';
+
+test('dir exists', async () => {
+  const d = dir(filePath + '1');
+  await d.remove();
+  expect(await d.exists()).toBe(false);
+  await d.create();
+  expect(await d.exists()).toBe(true);
+  await d.remove();
 });
-
-// todo: for waiting 'remove' method
-// test('dir exists', async () => {
-//   const dirPath = '/unit-test/dir/';
-//   expect(await exists(dirPath)).toBe(false);
-//   await mkdir(dirPath);
-//   expect(await exists(dirPath)).toBe(true);
-// });
-
-// test('file exists', async () => {
-//   const filePath = '/unit-test/file';
-//   expect(await exists(filePath)).toBe(false);
-//   expect(await file(filePath).text()).toBe('');
-// });

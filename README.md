@@ -8,8 +8,17 @@ In development, will reference the API design of [Bun File I/O](https://bun.sh/d
 
 ## Features
 
+- Basic operations
+  - [x] file
+    - [x] remove
+    - [x] exists
+  - [x] dir
+    - [x] create
+    - [x] remove
+    - [x] exists
+    - [ ] children
 - [x] Reading files
-  - [x] create file
+  - [x] getSize
   - [x] text
   - [x] stream
   - [x] arrayBuffer
@@ -27,10 +36,3 @@ In development, will reference the API design of [Bun File I/O](https://bun.sh/d
   - [x] writer.flush
   - [x] writer.truncate
   - [x] writer.close
-- Directories
-  - [ ] readdir
-  - [x] mkdir
-- Basic operations
-  - [x] file.exists
-  - [x] file.remove
-  - [ ] copy

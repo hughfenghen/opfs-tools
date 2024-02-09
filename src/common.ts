@@ -38,3 +38,18 @@ export async function getFSHandle(
     return null;
   }
 }
+
+export async function remove(path: string) {
+  const { parent, name } = parsePath(path);
+  const dirHandle = (await getFSHandle(parent, {
+    create: false,
+    isFile: false,
+  })) as FileSystemDirectoryHandle | null;
+  if (dirHandle == null) return;
+
+  try {
+    await dirHandle.removeEntry(name);
+  } catch (err) {
+    // maybe not exists
+  }
+}

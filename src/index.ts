@@ -1,2 +1,2 @@
 export { file, write } from './file';
-export { mkdir, exists } from './directories';
+export { dir } from './directories';
