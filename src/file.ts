@@ -1,5 +1,5 @@
 import { OPFSWorkerAccessHandle, createOPFSAccess } from './access-worker';
-import { getFSHandle, parsePath, remove } from './common';
+import { getFSHandle, remove } from './common';
 
 class OPFSWrapFile {
   constructor(private filePath: string) {}
@@ -156,7 +156,6 @@ class OPFSWrapFile {
   }
 }
 
-// todo: remove file from cache
 const fileCache = new Map<string, OPFSWrapFile>();
 export function file(filePath: string) {
   const f = fileCache.get(filePath) ?? new OPFSWrapFile(filePath);
