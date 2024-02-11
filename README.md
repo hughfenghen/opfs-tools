@@ -16,7 +16,7 @@ In development.
     - [x] create
     - [x] remove
     - [x] exists
-    - [ ] children
+    - [x] children
 - [x] Reading files
   - [x] getSize
   - [x] text

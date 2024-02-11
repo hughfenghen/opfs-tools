@@ -47,9 +47,5 @@ export async function remove(path: string) {
   })) as FileSystemDirectoryHandle | null;
   if (dirHandle == null) return;
 
-  try {
-    await dirHandle.removeEntry(name);
-  } catch (err) {
-    // maybe not exists
-  }
+  await dirHandle.removeEntry(name, { recursive: true });
 }
