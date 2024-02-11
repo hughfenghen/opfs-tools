@@ -1,8 +1,68 @@
 import { OPFSWorkerAccessHandle, createOPFSAccess } from './access-worker';
 import { getFSHandle, remove } from './common';
 
-class OPFSWrapFile {
-  constructor(private filePath: string) {}
+const fileCache = new Map<string, OPFSFileWrap>();
+/**
+ * Retrieves a file wrapper instance for the specified file path.
+ * @param {string} filePath - The path of the file.
+ * return A file wrapper instance.
+ * 
+ * @example
+ * // Read content from a file
+  const fileContent = await file('/path/to/file.txt').text();
+  console.log('File content:', fileContent);
+
+  // Check if a file exists
+  const fileExists = await file('/path/to/file.txt').exists();
+  console.log('File exists:', fileExists);
+
+  // Remove a file
+  await file('/path/to/file.txt').remove();
+ */
+export function file(filePath: string) {
+  const f = fileCache.get(filePath) ?? new OPFSFileWrap(filePath);
+  fileCache.set(filePath, f);
+  return f;
+}
+
+/**
+ * Writes content to the specified file.
+ * @param {string} filePath - The path of the file.
+ * @param {string | BufferSource | ReadableStream<BufferSource>} content - The content to write to the file.
+ * return A promise that resolves when the content is written to the file.
+ * 
+ * @example
+ * // Write content to a file
+   await write('/path/to/file.txt', 'Hello, world!');
+ */
+export async function write(
+  filePath: string,
+  content: string | BufferSource | ReadableStream<BufferSource>
+) {
+  const writer = await file(filePath).createWriter();
+  await writer.truncate(0);
+  if (content instanceof ReadableStream) {
+    const reader = content.getReader();
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      await writer.write(value);
+    }
+  } else {
+    await writer.write(content);
+  }
+  await writer.close();
+}
+
+/**
+ * Represents a wrapper for interacting with a file in the filesystem.
+ */
+export class OPFSFileWrap {
+  #filePath: string;
+
+  constructor(filePath: string) {
+    this.#filePath = filePath;
+  }
 
   #getAccessHandle = (() => {
     let referCnt = 0;
@@ -16,12 +76,12 @@ class OPFSWrapFile {
 
       return (accPromise = new Promise(async (resolve, reject) => {
         try {
-          const fh = (await getFSHandle(this.filePath, {
+          const fh = (await getFSHandle(this.#filePath, {
             create: true,
             isFile: true,
           })) as FileSystemFileHandle;
 
-          const accHandle = await createOPFSAccess(this.filePath, fh);
+          const accHandle = await createOPFSAccess(this.#filePath, fh);
           resolve([
             accHandle,
             async () => {
@@ -144,7 +204,7 @@ class OPFSWrapFile {
 
   async exists() {
     return (
-      (await getFSHandle(this.filePath, {
+      (await getFSHandle(this.#filePath, {
         create: false,
         isFile: true,
       })) instanceof FileSystemFileHandle
@@ -152,32 +212,6 @@ class OPFSWrapFile {
   }
 
   async remove() {
-    await remove(this.filePath);
+    await remove(this.#filePath);
   }
-}
-
-const fileCache = new Map<string, OPFSWrapFile>();
-export function file(filePath: string) {
-  const f = fileCache.get(filePath) ?? new OPFSWrapFile(filePath);
-  fileCache.set(filePath, f);
-  return f;
-}
-
-export async function write(
-  filePath: string,
-  content: string | BufferSource | ReadableStream<BufferSource>
-) {
-  const writer = await file(filePath).createWriter();
-  await writer.truncate(0);
-  if (content instanceof ReadableStream) {
-    const reader = content.getReader();
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      await writer.write(value);
-    }
-  } else {
-    await writer.write(content);
-  }
-  await writer.close();
 }
