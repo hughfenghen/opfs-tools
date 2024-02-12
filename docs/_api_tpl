@@ -1,0 +1,19 @@
+# API
+
+The "opfs-tools" library provides three entry functions: "file," "write," and "dir," for accessing files and directories.
+
+```ts
+import { file, write, dir } from 'opfs-tools'
+```
+
+## file
+
+```ts
+<file-api>
+```
+
+## directory
+
+```ts
+<dir-api>
+```

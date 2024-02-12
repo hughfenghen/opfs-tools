@@ -24,7 +24,7 @@
   "scripts": {
     "dev": "vite demo",
     "test": "vitest",
-    "build": "vite build && tsc -p tsconfig.build.json",
+    "build": "vite build && tsc -p tsconfig.build.json && node build/gen-api.js",
     "prepublishOnly": "yarn build",
     "preview": "vite preview"
   },
@@ -36,6 +36,7 @@
     "typescript": "^5.2.2",
     "vite": "^5.0.8",
     "vitest": "^1.2.1",
-    "webdriverio": "^8.28.8"
+    "webdriverio": "^8.28.8",
+    "zx": "^7.2.3"
   }
 }
