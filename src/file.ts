@@ -58,6 +58,10 @@ export async function write(
  * Represents a wrapper for interacting with a file in the filesystem.
  */
 export class OPFSFileWrap {
+  get kind() {
+    return 'file';
+  }
+
   #filePath: string;
 
   constructor(filePath: string) {

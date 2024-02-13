@@ -2,7 +2,7 @@ EN: A utility library for simple and efficient file operations in the browser, b
 
 CN: 在浏览器中简单、高效操作文件的工具库，基于 [OPFS](https://developer.mozilla.org/en-US/docs/Web/API/File_System_API/Origin_private_file_system) 构建。
 
-[**API**](./docs/api.md)
+[**API Documentation**](./docs/api.md)
 
 ## Features
 

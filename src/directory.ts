@@ -31,6 +31,10 @@ export function dir(dirPath: string) {
 }
 
 class OPFSDirWrap {
+  get kind() {
+    return 'dir';
+  }
+
   #dirPath: string;
   constructor(dirPath: string) {
     this.#dirPath = dirPath;
