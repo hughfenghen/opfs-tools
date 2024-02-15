@@ -25,6 +25,7 @@
     "dev": "vite demo",
     "test": "vitest",
     "build": "vite build && tsc -p tsconfig.build.json && node build/gen-api.js",
+    "build:benchmark": "vite build --config vite.benchmark-config.ts",
     "prepublishOnly": "yarn build",
     "preview": "vite preview"
   },
