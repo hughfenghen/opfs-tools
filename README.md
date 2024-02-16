@@ -4,6 +4,8 @@ CN: 在浏览器中运行的简单、高性能、完备的文件系统 API，基
 
 [**API Documentation**](./docs/api.md)
 
+[Benchmark](https://hughfenghen.github.io/opfs-tools/benchmark/)
+
 ## Features
 
 - Basic operations
