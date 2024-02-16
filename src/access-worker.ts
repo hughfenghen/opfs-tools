@@ -145,8 +145,11 @@ const opfsWorkerSetup = (): void => {
       const { offset, size } = e.data.args;
       const buf = new ArrayBuffer(size);
       const readLen = accessHandle.read(buf, { at: offset });
-      // @ts-expect-error transfer support by chrome 114
-      returnVal = buf.transfer?.(readLen) ?? buf.slice(0, readLen);
+      returnVal =
+        readLen === size
+          ? buf
+          : // @ts-expect-error transfer support by chrome 114
+            buf.transfer?.(readLen) ?? buf.slice(0, readLen);
       trans.push(returnVal);
     } else if (evtType === 'getSize') {
       returnVal = accessHandle.getSize();

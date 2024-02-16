@@ -4,8 +4,9 @@ function getElById(id: string): HTMLElement {
   return document.getElementById(id) as HTMLElement;
 }
 
+const fileName = 'testfile';
 const root = await navigator.storage.getDirectory();
-const testFileHandle = await root.getFileHandle('testfile', { create: true });
+const testFileHandle = await root.getFileHandle(fileName, { create: true });
 
 // Write 100KB of data in one operation, repeat it 1000 times, for a total of 100MB.
 const writeData = Array(1000)
@@ -25,7 +26,7 @@ getElById('built-in-writer-cost').textContent = `${~~(
 await writer1.truncate(0);
 await writer1.close();
 
-const writer2 = await file('testfile').createWriter();
+const writer2 = await file(fileName).createWriter();
 startTime = performance.now();
 for (const d of writeData) {
   await writer2.write(d);
@@ -48,11 +49,12 @@ getElById('file-slice-read-cost').textContent = `${~~(
   performance.now() - startTime
 )}ms`;
 
-const reader = await file('test-file').createReader();
+const reader = await file(fileName).createReader();
 startTime = performance.now();
 for (const p of startPoints) {
   await reader.read(100 * 1024, { at: p });
 }
+await reader.close();
 getElById('opfs-tools-read-cost').textContent = `${~~(
   performance.now() - startTime
 )}ms`;

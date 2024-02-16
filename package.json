@@ -22,7 +22,7 @@
   "main": "dist/opfs-tools.umd.cjs",
   "types": "dist/index.d.ts",
   "scripts": {
-    "dev": "vite demo",
+    "dev": "vite benchmark",
     "test": "vitest",
     "build": "vite build && tsc -p tsconfig.build.json && node build/gen-api.js",
     "build:benchmark": "vite build --config vite.benchmark-config.ts",
