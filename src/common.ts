@@ -1,5 +1,5 @@
 export function parsePath(path: string) {
-  if (path === '/') return { parent: '/', name: '' };
+  if (path === '/') return { parent: null, name: '' };
 
   const pathArr = path.split('/').filter((s) => s.length > 0);
   if (pathArr.length === 0) throw Error('Invalid path');
@@ -19,6 +19,7 @@ export async function getFSHandle(
   }
 ) {
   const { parent, name } = parsePath(path);
+  if (parent == null) return await navigator.storage.getDirectory();
 
   const dirPaths = parent.split('/').filter((s) => s.length > 0);
 
@@ -41,6 +42,14 @@ export async function getFSHandle(
 
 export async function remove(path: string) {
   const { parent, name } = parsePath(path);
+  if (parent == null) {
+    const root = await navigator.storage.getDirectory();
+    for await (const it of root.keys()) {
+      await root.removeEntry(it, { recursive: true });
+    }
+    return;
+  }
+
   const dirHandle = (await getFSHandle(parent, {
     create: false,
     isFile: false,

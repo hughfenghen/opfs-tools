@@ -3,6 +3,7 @@ import { file, OPFSFileWrap } from './file';
 
 declare global {
   interface FileSystemDirectoryHandle {
+    keys: () => AsyncIterable<string>;
     values: () => AsyncIterable<
       FileSystemDirectoryHandle | FileSystemFileHandle
     >;
