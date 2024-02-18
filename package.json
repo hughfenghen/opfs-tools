@@ -33,7 +33,10 @@
     "dist"
   ],
   "devDependencies": {
+    "@minoru/react-dnd-treeview": "^3.4.4",
     "@vitest/browser": "^1.2.1",
+    "react": "^18.2.0",
+    "react-dnd": "^16.0.1",
     "typescript": "^5.2.2",
     "vite": "^5.0.8",
     "vitest": "^1.2.1",
