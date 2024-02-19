@@ -1,20 +1,21 @@
-import React, { useState } from "react";
-import { DndProvider } from "react-dnd";
-import { ThemeProvider, CssBaseline } from "@mui/material";
-import Button from "@mui/material/Button";
-import AddIcon from "@mui/icons-material/Add";
+import React, { useState, useEffect } from 'react';
+import { DndProvider } from 'react-dnd';
+import { ThemeProvider, CssBaseline } from '@mui/material';
+import Button from '@mui/material/Button';
+import AddIcon from '@mui/icons-material/Add';
 import {
   Tree,
   MultiBackend,
   getDescendants,
-  getBackendOptions
-} from "@minoru/react-dnd-treeview";
-import { CustomNode } from "./CustomNode";
-import { CustomDragPreview } from "./CustomDragPreview";
-import { AddDialog } from "./AddDialog";
-import { theme } from "./theme";
-import styles from "./App.module.css";
-import SampleData from "./sample_data.json";
+  getBackendOptions,
+} from '@minoru/react-dnd-treeview';
+import { CustomNode } from './CustomNode';
+import { CustomDragPreview } from './CustomDragPreview';
+import { AddDialog } from './AddDialog';
+import { theme } from './theme';
+import styles from './App.module.css';
+import SampleData from './sample_data.json';
+import { file, dir, write } from '../../../src/';
 
 const getLastId = (treeData) => {
   const reversedArray = [...treeData].sort((a, b) => {
@@ -34,15 +35,57 @@ const getLastId = (treeData) => {
   return 0;
 };
 
+async function initFiles() {
+  if ((await dir('/').children()).length != 0) return;
+
+  await write('/opfs-tools/dir1/file1', 'file');
+  await write('/opfs-tools/dir1/file2', 'file');
+  await write('/opfs-tools/dir2/file1', 'file');
+}
+
+async function getInitData(dirPath, rs) {
+  for (const it of await dir(dirPath).children()) {
+    rs.push({
+      id: it.path,
+      parent: it.parent.path,
+      droppable: it.kind === 'dir',
+      text: it.name,
+      data: {
+        fileType: 'text',
+        fileSize: '0KB',
+      },
+    });
+    if (it.kind === 'dir') {
+      await getInitData(it.path, rs);
+    }
+  }
+}
+
 function App() {
-  const [treeData, setTreeData] = useState(SampleData);
+  const [treeData, setTreeData] = useState([]);
   const handleDrop = (newTree) => setTreeData(newTree);
   const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      await initFiles();
+      const tree = [
+        {
+          id: '/',
+          parent: 0,
+          droppable: false,
+          text: 'root',
+        },
+      ];
+      await getInitData('/', tree);
+      setTreeData(tree);
+    })();
+  }, []);
 
   const handleDelete = (id) => {
     const deleteIds = [
       id,
-      ...getDescendants(treeData, id).map((node) => node.id)
+      ...getDescendants(treeData, id).map((node) => node.id),
     ];
     const newTree = treeData.filter((node) => !deleteIds.includes(node.id));
 
@@ -56,16 +99,16 @@ function App() {
     const partialTree = descendants.map((node) => ({
       ...node,
       id: node.id + lastId,
-      parent: node.parent + lastId
+      parent: node.parent + lastId,
     }));
 
     setTreeData([
       ...treeData,
       {
         ...targetNode,
-        id: targetNode.id + lastId
+        id: targetNode.id + lastId,
       },
-      ...partialTree
+      ...partialTree,
     ]);
   };
 
@@ -84,8 +127,8 @@ function App() {
       ...treeData,
       {
         ...newNode,
-        id: lastId
-      }
+        id: lastId,
+      },
     ]);
 
     setOpen(false);
@@ -110,7 +153,7 @@ function App() {
           </div>
           <Tree
             tree={treeData}
-            rootId={0}
+            rootId={'/'}
             render={(node, options) => (
               <CustomNode
                 node={node}
@@ -126,7 +169,7 @@ function App() {
             classes={{
               root: styles.treeRoot,
               draggingSource: styles.draggingSource,
-              dropTarget: styles.dropTarget
+              dropTarget: styles.dropTarget,
             }}
           />
         </div>
