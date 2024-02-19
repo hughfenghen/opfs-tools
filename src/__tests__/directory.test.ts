@@ -33,6 +33,8 @@ test('root children', async () => {
 
   expect(await file(`${path}/1`).getSize()).toBe(0);
 
-  expect(await root.children()).toEqual([dir('/unit-test')]);
+  const children = await root.children();
+  expect(children).toEqual([dir('/unit-test')]);
+  expect(children[0].path).toBe('/unit-test');
   await root.remove();
 });

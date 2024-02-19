@@ -1,4 +1,4 @@
-import { getFSHandle, remove } from './common';
+import { getFSHandle, parsePath, remove } from './common';
 import { file, OPFSFileWrap } from './file';
 
 declare global {
@@ -36,9 +36,27 @@ class OPFSDirWrap {
     return 'dir';
   }
 
-  #dirPath: string;
+  get name() {
+    return this.#name;
+  }
+
+  get path() {
+    return this.#path;
+  }
+
+  get parent(): OPFSDirWrap | null {
+    return this.#parentPath == null ? null : dir(this.#parentPath);
+  }
+
+  #path: string;
+  #name: string;
+  #parentPath: string | null;
+
   constructor(dirPath: string) {
-    this.#dirPath = dirPath;
+    this.#path = dirPath;
+    const { parent, name } = parsePath(dirPath);
+    this.#name = name;
+    this.#parentPath = parent;
   }
 
   /**
@@ -46,11 +64,11 @@ class OPFSDirWrap {
    * return A promise that resolves when the directory is created.
    */
   async create() {
-    await getFSHandle(this.#dirPath, {
+    await getFSHandle(this.#path, {
       create: true,
       isFile: false,
     });
-    return dir(this.#dirPath);
+    return dir(this.#path);
   }
 
   /**
@@ -59,7 +77,7 @@ class OPFSDirWrap {
    */
   async exists() {
     return (
-      (await getFSHandle(this.#dirPath, {
+      (await getFSHandle(this.#path, {
         create: false,
         isFile: false,
       })) instanceof FileSystemDirectoryHandle
@@ -71,7 +89,7 @@ class OPFSDirWrap {
    * return A promise that resolves when the directory is removed.
    */
   async remove() {
-    await remove(this.#dirPath);
+    await remove(this.#path);
   }
 
   /**
@@ -79,7 +97,7 @@ class OPFSDirWrap {
    * return A promise that resolves to an array of objects representing the children.
    */
   async children(): Promise<Array<OPFSDirWrap | OPFSFileWrap>> {
-    const handle = (await getFSHandle(this.#dirPath, {
+    const handle = (await getFSHandle(this.#path, {
       create: false,
       isFile: false,
     })) as FileSystemDirectoryHandle;
@@ -87,8 +105,12 @@ class OPFSDirWrap {
 
     const rs = [];
     for await (const it of handle.values()) {
-      rs.push((it.kind === 'file' ? file : dir)(`${this.#dirPath}/${it.name}`));
+      rs.push((it.kind === 'file' ? file : dir)(joinPath(this.#path, it.name)));
     }
     return rs;
   }
+}
+
+function joinPath(p1: string, p2: string) {
+  return `${p1}/${p2}`.replace('//', '/');
 }

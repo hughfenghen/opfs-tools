@@ -1,5 +1,6 @@
 import { OPFSWorkerAccessHandle, createOPFSAccess } from './access-worker';
-import { getFSHandle, remove } from './common';
+import { getFSHandle, parsePath, remove } from './common';
+import { dir } from './directory';
 
 const fileCache = new Map<string, OPFSFileWrap>();
 /**
@@ -62,10 +63,27 @@ export class OPFSFileWrap {
     return 'file';
   }
 
-  #filePath: string;
+  get path() {
+    return this.#path;
+  }
+
+  get name() {
+    return this.#name;
+  }
+
+  get parent(): ReturnType<typeof dir> | null {
+    return this.#parentPath == null ? null : dir(this.#parentPath);
+  }
+
+  #path: string;
+  #parentPath: string | null;
+  #name: string;
 
   constructor(filePath: string) {
-    this.#filePath = filePath;
+    this.#path = filePath;
+    const { parent, name } = parsePath(filePath);
+    this.#name = name;
+    this.#parentPath = parent;
   }
 
   #getAccessHandle = (() => {
@@ -80,12 +98,12 @@ export class OPFSFileWrap {
 
       return (accPromise = new Promise(async (resolve, reject) => {
         try {
-          const fh = (await getFSHandle(this.#filePath, {
+          const fh = (await getFSHandle(this.#path, {
             create: true,
             isFile: true,
           })) as FileSystemFileHandle;
 
-          const accHandle = await createOPFSAccess(this.#filePath, fh);
+          const accHandle = await createOPFSAccess(this.#path, fh);
           resolve([
             accHandle,
             async () => {
@@ -208,7 +226,7 @@ export class OPFSFileWrap {
 
   async exists() {
     return (
-      (await getFSHandle(this.#filePath, {
+      (await getFSHandle(this.#path, {
         create: false,
         isFile: true,
       })) instanceof FileSystemFileHandle
@@ -216,6 +234,6 @@ export class OPFSFileWrap {
   }
 
   async remove() {
-    await remove(this.#filePath);
+    await remove(this.#path);
   }
 }
