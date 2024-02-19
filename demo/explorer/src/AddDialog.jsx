@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState } from 'react';
 import {
   Button,
   Select,
@@ -11,15 +11,15 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogActions
-} from "@mui/material";
-import styles from "./AddDialog.module.css";
+  DialogActions,
+} from '@mui/material';
+import styles from './AddDialog.module.css';
 
 export const AddDialog = (props) => {
-  const [text, setText] = useState("");
-  const [fileType, setFileType] = useState("text");
+  const [text, setText] = useState('');
+  const [fileType, setFileType] = useState('text');
   const [parent, setParent] = useState(0);
-  const [droppable, setDroppable] = useState(false);
+  const [droppable, setdroppable] = useState(false);
 
   const handleChangeText = (e) => {
     setText(e.target.value);
@@ -29,8 +29,8 @@ export const AddDialog = (props) => {
     setParent(Number(e.target.value));
   };
 
-  const handleChangeDroppable = (e) => {
-    setDroppable(e.target.checked);
+  const handleChangedroppable = (e) => {
+    setdroppable(e.target.checked);
   };
 
   const handleChangeFileType = (e) => {
@@ -64,11 +64,11 @@ export const AddDialog = (props) => {
             control={
               <Checkbox
                 checked={droppable}
-                onChange={handleChangeDroppable}
+                onChange={handleChangedroppable}
                 color="primary"
               />
             }
-            label="Droppable"
+            label="droppable"
           />
         </div>
         {!droppable && (
@@ -91,15 +91,15 @@ export const AddDialog = (props) => {
       <DialogActions>
         <Button onClick={props.onClose}>Cancel</Button>
         <Button
-          disabled={text === ""}
+          disabled={text === ''}
           onClick={() =>
             props.onSubmit({
               text,
               parent,
               droppable,
               data: {
-                fileType
-              }
+                fileType,
+              },
             })
           }
         >

@@ -1,10 +1,10 @@
-import React, { useState } from "react";
-import Typography from "@mui/material/Typography";
-import IconButton from "@mui/material/IconButton";
-import { ArrowRight, Delete, FileCopy } from "@mui/icons-material";
-import { useDragOver } from "@minoru/react-dnd-treeview";
-import { TypeIcon } from "./TypeIcon";
-import styles from "./CustomNode.module.css";
+import React, { useState } from 'react';
+import Typography from '@mui/material/Typography';
+import IconButton from '@mui/material/IconButton';
+import { ArrowRight, Delete, FileCopy } from '@mui/icons-material';
+import { useDragOver } from '@minoru/react-dnd-treeview';
+import { TypeIcon } from './TypeIcon';
+import styles from './CustomNode.module.css';
 
 export const CustomNode = (props) => {
   const [hover, setHover] = useState(false);
@@ -28,7 +28,7 @@ export const CustomNode = (props) => {
     >
       <div
         className={`${styles.expandIconWrapper} ${
-          props.isOpen ? styles.isOpen : ""
+          props.isOpen ? styles.isOpen : ''
         }`}
       >
         {props.node.droppable && (
