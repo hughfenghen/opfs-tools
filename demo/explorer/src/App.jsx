@@ -98,7 +98,7 @@ function App() {
     setTreeData(newTree);
   };
 
-  const handleCopy = (id) => {
+  const handleCopy = async (id) => {
     const lastId = getLastId(treeData);
     const targetNode = treeData.find((n) => n.id === id);
     const descendants = getDescendants(treeData, id);
@@ -108,14 +108,15 @@ function App() {
       parent: node.parent + lastId,
     }));
 
-    setTreeData([
-      ...treeData,
-      {
-        ...targetNode,
-        id: targetNode.id + lastId,
-      },
-      ...partialTree,
-    ]);
+    const newName = targetNode.text + ' copy';
+    const newNode = {
+      ...targetNode,
+      text: newName,
+      id: targetNode.parent + '/' + newName,
+    };
+    await write(newNode.id, file(targetNode.id));
+
+    setTreeData([...treeData, newNode, ...partialTree]);
   };
 
   const handleOpenDialog = () => {

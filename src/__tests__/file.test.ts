@@ -1,7 +1,11 @@
-import { expect, test } from 'vitest';
+import { expect, test, afterEach } from 'vitest';
 import { file, write } from '../file';
 
 const filePath = '/unit-test/file';
+
+afterEach(async () => {
+  await file(filePath).remove();
+});
 
 test('write string to file', async () => {
   const fp = filePath + '1';
@@ -16,6 +20,13 @@ test('write stream to file', async () => {
   const fp = filePath + '2';
   await write(fp, new Blob(['I 🩷 坤坤\n'], { type: 'text/plain' }).stream());
   expect(await file(fp).text()).toBe('I 🩷 坤坤\n');
+});
+
+test('copy file', async () => {
+  await write(filePath, '111');
+  await write('file copy', file(filePath));
+  expect(await file('file copy').text()).toBe('111');
+  await file('file copy').remove();
 });
 
 test('multiple write operations', async () => {

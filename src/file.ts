@@ -38,8 +38,13 @@ export function file(filePath: string) {
  */
 export async function write(
   filePath: string,
-  content: string | BufferSource | ReadableStream<BufferSource>
+  content: string | BufferSource | ReadableStream<BufferSource> | OPFSFileWrap
 ) {
+  if (content instanceof OPFSFileWrap) {
+    await write(filePath, await content.stream());
+    return;
+  }
+
   const writer = await file(filePath).createWriter();
   await writer.truncate(0);
   if (content instanceof ReadableStream) {
