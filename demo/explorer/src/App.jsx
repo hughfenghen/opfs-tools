@@ -41,6 +41,7 @@ async function initFiles() {
   await write('/opfs-tools/dir1/file1', 'file');
   await write('/opfs-tools/dir1/file2', 'file');
   await write('/opfs-tools/dir2/file1', 'file');
+  await write('/.Trush/xxx', 'xxx');
 }
 
 async function getInitData(dirPath, rs) {
@@ -75,6 +76,10 @@ function App() {
           parent: 0,
           droppable: false,
           text: 'root',
+          data: {
+            fileType: 'text',
+            fileSize: '0KB',
+          },
         },
       ];
       await getInitData('/', tree);
@@ -82,7 +87,8 @@ function App() {
     })();
   }, []);
 
-  const handleDelete = (id) => {
+  const handleDelete = async (id) => {
+    await file(id).remove();
     const deleteIds = [
       id,
       ...getDescendants(treeData, id).map((node) => node.id),
