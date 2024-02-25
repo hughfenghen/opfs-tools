@@ -108,7 +108,15 @@ function App() {
       parent: node.parent + lastId,
     }));
 
-    const newName = targetNode.text + ' copy';
+    const copyedCnt = treeData.filter(
+      (n) =>
+        n.parent === targetNode.parent &&
+        n.text.startsWith(targetNode.text.replace(/ copy\d+$/, '') + ' copy')
+    ).length;
+
+    const newName = /copy\d+$/.test(targetNode.text)
+      ? targetNode.text.replace(/\d+$/, copyedCnt + 1)
+      : targetNode.text + ' copy' + (copyedCnt + 1);
     const newNode = {
       ...targetNode,
       text: newName,
