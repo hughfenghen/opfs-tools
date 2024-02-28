@@ -1,6 +1,6 @@
 import { OPFSWorkerAccessHandle, createOPFSAccess } from './access-worker';
 import { getFSHandle, parsePath, remove } from './common';
-import { dir } from './directory';
+import { OPFSDirWrap, dir } from './directory';
 
 const fileCache = new Map<string, OPFSFileWrap>();
 /**
@@ -240,5 +240,23 @@ export class OPFSFileWrap {
 
   async remove() {
     await remove(this.#path);
+  }
+
+  async moveTo(target: OPFSDirWrap | OPFSFileWrap) {
+    if (!(await this.exists())) {
+      throw Error(`file ${this.path} not exists`);
+    }
+    if (target instanceof OPFSFileWrap) {
+      if (await target.exists()) {
+        throw Error(`target ${target.path} already exists`);
+      }
+      await write(target.path, this);
+    } else if (target instanceof OPFSDirWrap) {
+      await this.moveTo(file(target.path + '/' + this.name));
+    } else {
+      throw Error('Illegal target type');
+    }
+
+    await this.remove();
   }
 }

@@ -1,7 +1,12 @@
-import { expect, test, afterEach } from 'vitest';
+import { expect, test, afterEach, beforeEach } from 'vitest';
 import { file, write } from '../file';
+import { dir } from '../directory';
 
 const filePath = '/unit-test/file';
+
+beforeEach(async () => {
+  await file(filePath).remove();
+});
 
 afterEach(async () => {
   await file(filePath).remove();
@@ -136,7 +141,7 @@ test('random access', async () => {
 });
 
 test('file exists', async () => {
-  const f = file(filePath + '10');
+  const f = file(filePath);
   await f.remove();
 
   expect(await f.exists()).toBe(false);
@@ -145,4 +150,11 @@ test('file exists', async () => {
   expect(await f.exists()).toBe(true);
 
   await f.remove();
+});
+
+test('move file', async () => {
+  console.log(1111, await file(filePath).exists());
+  await file(filePath).moveTo(dir('/'));
+  console.log(222);
+  expect(await file(filePath).exists()).toBe(false);
 });

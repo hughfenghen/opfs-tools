@@ -64,7 +64,10 @@ async function getInitData(dirPath, rs) {
 
 function App() {
   const [treeData, setTreeData] = useState([]);
-  const handleDrop = (newTree) => setTreeData(newTree);
+  const handleDrop = async (newTree, changeData) => {
+    await file(changeData.dragSourceId).moveTo(dir(changeData.dropTargetId));
+    setTreeData(newTree);
+  };
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
