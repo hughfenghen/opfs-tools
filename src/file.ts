@@ -46,18 +46,23 @@ export async function write(
   }
 
   const writer = await file(filePath).createWriter();
-  await writer.truncate(0);
-  if (content instanceof ReadableStream) {
-    const reader = content.getReader();
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      await writer.write(value);
+  try {
+    await writer.truncate(0);
+    if (content instanceof ReadableStream) {
+      const reader = content.getReader();
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        await writer.write(value);
+      }
+    } else {
+      await writer.write(content);
     }
-  } else {
-    await writer.write(content);
+  } catch (err) {
+    throw err;
+  } finally {
+    await writer.close();
   }
-  await writer.close();
 }
 
 /**
@@ -240,6 +245,7 @@ export class OPFSFileWrap {
 
   async remove() {
     await remove(this.#path);
+    // fileCache.delete(this.#path);
   }
 
   async moveTo(target: OPFSDirWrap | OPFSFileWrap): Promise<OPFSFileWrap> {
