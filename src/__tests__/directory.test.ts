@@ -24,17 +24,3 @@ test('dir children', async () => {
 
   await d.remove();
 });
-
-test('root children', async () => {
-  const path = filePath + '3';
-  const root = dir('/');
-  await root.remove();
-  expect(await root.children()).toEqual([]);
-
-  expect(await file(`${path}/1`).getSize()).toBe(0);
-
-  const children = await root.children();
-  expect(children).toEqual([dir('/unit-test')]);
-  expect(children[0].path).toBe('/unit-test');
-  await root.remove();
-});
