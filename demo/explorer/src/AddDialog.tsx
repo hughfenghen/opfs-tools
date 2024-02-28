@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   Button,
   Select,
@@ -11,29 +11,36 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogActions,
-} from '@mui/material';
-import styles from './AddDialog.module.css';
+  DialogActions
+} from "@mui/material";
+import { NodeModel } from "./types";
+import styles from "./AddDialog.module.css";
 
-export const AddDialog = (props) => {
-  const [text, setText] = useState('');
-  const [fileType, setFileType] = useState('text');
+type Props = {
+  tree: NodeModel[];
+  onClose: () => void;
+  onSubmit: (e: Omit<NodeModel, "id">) => void;
+};
+
+export const AddDialog: React.FC<Props> = (props) => {
+  const [text, setText] = useState("");
+  const [fileType, setFileType] = useState("text");
   const [parent, setParent] = useState(0);
-  const [droppable, setdroppable] = useState(false);
+  const [droppable, setDroppable] = useState(false);
 
-  const handleChangeText = (e) => {
+  const handleChangeText = (e: React.ChangeEvent<HTMLInputElement>) => {
     setText(e.target.value);
   };
 
-  const handleChangeParent = (e) => {
+  const handleChangeParent = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setParent(Number(e.target.value));
   };
 
-  const handleChangedroppable = (e) => {
-    setdroppable(e.target.checked);
+  const handleChangeDroppable = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setDroppable(e.target.checked);
   };
 
-  const handleChangeFileType = (e) => {
+  const handleChangeFileType = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setFileType(e.target.value);
   };
 
@@ -64,11 +71,11 @@ export const AddDialog = (props) => {
             control={
               <Checkbox
                 checked={droppable}
-                onChange={handleChangedroppable}
+                onChange={handleChangeDroppable}
                 color="primary"
               />
             }
-            label="droppable"
+            label="Droppable"
           />
         </div>
         {!droppable && (
@@ -91,15 +98,15 @@ export const AddDialog = (props) => {
       <DialogActions>
         <Button onClick={props.onClose}>Cancel</Button>
         <Button
-          disabled={text === ''}
+          disabled={text === ""}
           onClick={() =>
             props.onSubmit({
               text,
               parent,
               droppable,
               data: {
-                fileType,
-              },
+                fileType
+              }
             })
           }
         >

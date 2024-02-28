@@ -1,17 +1,27 @@
-import React, { useState } from 'react';
-import Typography from '@mui/material/Typography';
-import IconButton from '@mui/material/IconButton';
-import { ArrowRight, Delete, FileCopy } from '@mui/icons-material';
-import { useDragOver } from '@minoru/react-dnd-treeview';
-import { TypeIcon } from './TypeIcon';
-import styles from './CustomNode.module.css';
+import React, { useState } from "react";
+import Typography from "@mui/material/Typography";
+import IconButton from "@mui/material/IconButton";
+import { ArrowRight, Delete, FileCopy } from "@mui/icons-material";
+import { useDragOver } from "@minoru/react-dnd-treeview";
+import { NodeModel, CustomData } from "./types";
+import { TypeIcon } from "./TypeIcon";
+import styles from "./CustomNode.module.css";
 
-export const CustomNode = (props) => {
-  const [hover, setHover] = useState(false);
+type Props = {
+  node: NodeModel<CustomData>;
+  depth: number;
+  isOpen: boolean;
+  onToggle: (id: NodeModel["id"]) => void;
+  onDelete: (id: NodeModel["id"]) => void;
+  onCopy: (id: NodeModel["id"]) => void;
+};
+
+export const CustomNode: React.FC<Props> = (props) => {
+  const [hover, setHover] = useState<boolean>(false);
   const { id, droppable, data } = props.node;
   const indent = props.depth * 24;
 
-  const handleToggle = (e) => {
+  const handleToggle = (e: React.MouseEvent) => {
     e.stopPropagation();
     props.onToggle(props.node.id);
   };
@@ -28,7 +38,7 @@ export const CustomNode = (props) => {
     >
       <div
         className={`${styles.expandIconWrapper} ${
-          props.isOpen ? styles.isOpen : ''
+          props.isOpen ? styles.isOpen : ""
         }`}
       >
         {props.node.droppable && (

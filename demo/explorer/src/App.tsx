@@ -6,18 +6,19 @@ import AddIcon from '@mui/icons-material/Add';
 import {
   Tree,
   MultiBackend,
+  DragLayerMonitorProps,
   getDescendants,
   getBackendOptions,
 } from '@minoru/react-dnd-treeview';
+import { NodeModel, CustomData, DropOptions } from './types';
 import { CustomNode } from './CustomNode';
 import { CustomDragPreview } from './CustomDragPreview';
 import { AddDialog } from './AddDialog';
 import { theme } from './theme';
 import styles from './App.module.css';
-import SampleData from './sample_data.json';
-import { file, dir, write } from '../../../src/';
+import { file, dir, write } from '../../../src';
 
-const getLastId = (treeData) => {
+const getLastId = (treeData: NodeModel[]) => {
   const reversedArray = [...treeData].sort((a, b) => {
     if (a.id < b.id) {
       return 1;
@@ -36,8 +37,10 @@ const getLastId = (treeData) => {
 };
 
 async function initFiles() {
+  console.log(111, await dir('/').children());
   if ((await dir('/').children()).length != 0) return;
 
+  console.log(222);
   await write('/opfs-tools/dir1/file1', 'file');
   await write('/opfs-tools/dir1/file2', 'file');
   await write('/opfs-tools/dir2/file1', 'file');
@@ -63,12 +66,15 @@ async function getInitData(dirPath, rs) {
 }
 
 function App() {
-  const [treeData, setTreeData] = useState([]);
-  const handleDrop = async (newTree, changeData) => {
+  const [treeData, setTreeData] = useState<NodeModel<CustomData>[]>([]);
+  const handleDrop = async (
+    newTree: NodeModel<CustomData>[],
+    changeData: DropOptions<CustomData>
+  ) => {
     await file(changeData.dragSourceId).moveTo(dir(changeData.dropTargetId));
     setTreeData(newTree);
   };
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState<boolean>(false);
 
   useEffect(() => {
     (async () => {
@@ -76,7 +82,7 @@ function App() {
       const tree = [
         {
           id: '/',
-          parent: 0,
+          parent: null,
           droppable: false,
           text: 'root',
           data: {
@@ -90,7 +96,7 @@ function App() {
     })();
   }, []);
 
-  const handleDelete = async (id) => {
+  const handleDelete = async (id: NodeModel['id']) => {
     await file(id).remove();
     const deleteIds = [
       id,
@@ -101,11 +107,11 @@ function App() {
     setTreeData(newTree);
   };
 
-  const handleCopy = async (id) => {
+  const handleCopy = async (id: NodeModel['id']) => {
     const lastId = getLastId(treeData);
     const targetNode = treeData.find((n) => n.id === id);
     const descendants = getDescendants(treeData, id);
-    const partialTree = descendants.map((node) => ({
+    const partialTree = descendants.map((node: NodeModel<CustomData>) => ({
       ...node,
       id: node.id + lastId,
       parent: node.parent + lastId,
@@ -138,18 +144,16 @@ function App() {
     setOpen(false);
   };
 
-  const handleSubmit = (newNode) => {
-    const lastId = getLastId(treeData) + 1;
-
-    setTreeData([
-      ...treeData,
-      {
-        ...newNode,
-        id: lastId,
-      },
-    ]);
-
-    setOpen(false);
+  const handleSubmit = (newNode: Omit<NodeModel<CustomData>, 'id'>) => {
+    // const lastId = getLastId(treeData) + 1;
+    // setTreeData([
+    //   ...treeData,
+    //   {
+    //     ...newNode,
+    //     id: lastId,
+    //   },
+    // ]);
+    // setOpen(false);
   };
 
   return (
@@ -172,7 +176,7 @@ function App() {
           <Tree
             tree={treeData}
             rootId={'/'}
-            render={(node, options) => (
+            render={(node: NodeModel<CustomData>, options) => (
               <CustomNode
                 node={node}
                 {...options}
@@ -180,9 +184,9 @@ function App() {
                 onCopy={handleCopy}
               />
             )}
-            dragPreviewRender={(monitorProps) => (
-              <CustomDragPreview monitorProps={monitorProps} />
-            )}
+            dragPreviewRender={(
+              monitorProps: DragLayerMonitorProps<CustomData>
+            ) => <CustomDragPreview monitorProps={monitorProps} />}
             onDrop={handleDrop}
             classes={{
               root: styles.treeRoot,
