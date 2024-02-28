@@ -83,17 +83,24 @@ function getWorkerMsger() {
     const worker = new Worker(url);
 
     let cbId = 0;
-    let cbFns: Record<number, Function> = {};
+    let cbFns: Record<number, { resolve: Function; reject: Function }> = {};
 
     worker.onmessage = ({
       data,
     }: {
-      data: { cbId: number; returnVal: unknown; evtType: string };
+      data: {
+        cbId: number;
+        returnVal?: unknown;
+        evtType: string;
+        errMsg: string;
+      };
     }) => {
       if (data.evtType === 'callback') {
-        cbFns[data.cbId]?.(data.returnVal);
-        delete cbFns[data.cbId];
+        cbFns[data.cbId]?.resolve(data.returnVal);
+      } else if (data.evtType === 'throwError') {
+        cbFns[data.cbId]?.reject(Error(data.errMsg));
       }
+      delete cbFns[data.cbId];
     };
 
     return async function postMsg(
@@ -103,8 +110,8 @@ function getWorkerMsger() {
     ) {
       cbId += 1;
 
-      const rsP = new Promise((resolve) => {
-        cbFns[cbId] = resolve;
+      const rsP = new Promise((resolve, reject) => {
+        cbFns[cbId] = { resolve, reject };
       });
       worker.postMessage(
         {
@@ -128,43 +135,52 @@ const opfsWorkerSetup = (): void => {
 
     let accessHandle = fileAccesserMap[args.filePath];
 
-    let returnVal;
-    const trans: Transferable[] = [];
-    if (evtType === 'register') {
-      accessHandle = await args.fileHandle.createSyncAccessHandle();
-      fileAccesserMap[args.filePath] = accessHandle;
-    } else if (evtType === 'close') {
-      accessHandle.close();
-      delete fileAccesserMap[args.filePath];
-    } else if (evtType === 'truncate') {
-      accessHandle.truncate(args.newSize);
-    } else if (evtType === 'write') {
-      const { data, opts } = e.data.args;
-      returnVal = accessHandle.write(data, opts);
-    } else if (evtType === 'read') {
-      const { offset, size } = e.data.args;
-      const buf = new ArrayBuffer(size);
-      const readLen = accessHandle.read(buf, { at: offset });
-      returnVal =
-        readLen === size
-          ? buf
-          : // @ts-expect-error transfer support by chrome 114
-            buf.transfer?.(readLen) ?? buf.slice(0, readLen);
-      trans.push(returnVal);
-    } else if (evtType === 'getSize') {
-      returnVal = accessHandle.getSize();
-    } else if (evtType === 'flush') {
-      accessHandle.flush();
-    }
+    try {
+      let returnVal;
+      const trans: Transferable[] = [];
+      if (evtType === 'register') {
+        accessHandle = await args.fileHandle.createSyncAccessHandle();
+        fileAccesserMap[args.filePath] = accessHandle;
+      } else if (evtType === 'close') {
+        accessHandle.close();
+        delete fileAccesserMap[args.filePath];
+      } else if (evtType === 'truncate') {
+        accessHandle.truncate(args.newSize);
+      } else if (evtType === 'write') {
+        const { data, opts } = e.data.args;
+        returnVal = accessHandle.write(data, opts);
+      } else if (evtType === 'read') {
+        const { offset, size } = e.data.args;
+        const buf = new ArrayBuffer(size);
+        const readLen = accessHandle.read(buf, { at: offset });
+        returnVal =
+          readLen === size
+            ? buf
+            : // @ts-expect-error transfer support by chrome 114
+              buf.transfer?.(readLen) ?? buf.slice(0, readLen);
+        trans.push(returnVal);
+      } else if (evtType === 'getSize') {
+        returnVal = accessHandle.getSize();
+      } else if (evtType === 'flush') {
+        accessHandle.flush();
+      }
 
-    self.postMessage(
-      {
-        evtType: 'callback',
+      self.postMessage(
+        {
+          evtType: 'callback',
+          cbId: e.data.cbId,
+          returnVal,
+        },
+        // @ts-expect-error
+        trans
+      );
+    } catch (error) {
+      const err = error as Error;
+      self.postMessage({
+        evtType: 'throwError',
         cbId: e.data.cbId,
-        returnVal,
-      },
-      // @ts-expect-error
-      trans
-    );
+        errMsg: err.name + ': ' + err.message + '\n' + JSON.stringify(e.data),
+      });
+    }
   };
 };
