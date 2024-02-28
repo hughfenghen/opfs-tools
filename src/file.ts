@@ -242,21 +242,17 @@ export class OPFSFileWrap {
     await remove(this.#path);
   }
 
-  async moveTo(target: OPFSDirWrap | OPFSFileWrap) {
+  async moveTo(target: OPFSDirWrap | OPFSFileWrap): Promise<OPFSFileWrap> {
     if (!(await this.exists())) {
       throw Error(`file ${this.path} not exists`);
     }
     if (target instanceof OPFSFileWrap) {
-      if (await target.exists()) {
-        throw Error(`target ${target.path} already exists`);
-      }
       await write(target.path, this);
+      await this.remove();
+      return file(target.path);
     } else if (target instanceof OPFSDirWrap) {
-      await this.moveTo(file(target.path + '/' + this.name));
-    } else {
-      throw Error('Illegal target type');
+      return await this.moveTo(file(target.path + '/' + this.name));
     }
-
-    await this.remove();
+    throw Error('Illegal target type');
   }
 }

@@ -153,8 +153,14 @@ test('file exists', async () => {
 });
 
 test('move file', async () => {
-  console.log(1111, await file(filePath).exists());
-  await file(filePath).moveTo(dir('/'));
-  console.log(222);
+  await write(filePath, 'foo');
+  const target = await file(filePath).moveTo(dir('/'));
   expect(await file(filePath).exists()).toBe(false);
+  await target.remove();
+});
+
+test('move file, current file not exists', async () => {
+  expect(async () => {
+    await file(filePath).moveTo(dir('/'));
+  }).rejects.toThrowError();
 });
