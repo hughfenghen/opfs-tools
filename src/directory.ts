@@ -109,6 +109,25 @@ export class OPFSDirWrap {
     }
     return rs;
   }
+
+  /**
+   * If the dest folder exists, move the current directory into the dest folder;
+   * if the dest folder does not exist, rename the current directory to dest name.
+   */
+  async moveTo(dest: OPFSDirWrap): Promise<OPFSDirWrap> {
+    if (!(await this.exists())) {
+      throw Error(`dir ${this.path} not exists`);
+    }
+
+    const newDir = (await dest.exists())
+      ? dir(dest.path + '/' + this.name)
+      : dest;
+    await newDir.create();
+    await Promise.all((await this.children()).map((it) => it.moveTo(newDir)));
+    await this.remove();
+
+    return newDir;
+  }
 }
 
 function joinPath(p1: string, p2: string) {
