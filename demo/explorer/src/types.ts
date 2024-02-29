@@ -1,11 +1,13 @@
 export type CustomData = {
   fileType: string;
+  fileSize: string;
 };
 
 export type NodeModel<T = unknown> = {
   id: string;
   parent: string | null;
   droppable?: boolean;
+  kind: 'file' | 'dir';
   text: string;
   data?: T;
 };

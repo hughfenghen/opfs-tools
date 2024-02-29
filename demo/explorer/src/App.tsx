@@ -37,20 +37,21 @@ const getLastId = (treeData: NodeModel[]) => {
 };
 
 async function initFiles() {
-  if ((await dir('/').children()).length != 0) return;
+  if ((await dir('/').children()).length > 1) return;
 
   await write('/opfs-tools/dir1/file1', 'file');
   await write('/opfs-tools/dir1/file2', 'file');
   await write('/opfs-tools/dir2/file1', 'file');
-  await write('/.Trush/xxx', 'xxx');
+  await dir('/.Trush').create();
 }
 
-async function getInitData(dirPath, rs) {
+async function getInitData(dirPath: string, rs: NodeModel<CustomData>[]) {
   for (const it of await dir(dirPath).children()) {
     rs.push({
       id: it.path,
       parent: it.parent.path,
       droppable: it.kind === 'dir',
+      kind: it.kind,
       text: it.name,
       data: {
         fileType: 'text',
@@ -82,6 +83,7 @@ function App() {
           id: '/',
           parent: null,
           droppable: false,
+          kind: 'dir' as const,
           text: 'root',
           data: {
             fileType: 'text',
@@ -95,14 +97,22 @@ function App() {
   }, []);
 
   const handleDelete = async (id: NodeModel['id']) => {
-    const deleteIds = [
-      id,
-      ...getDescendants(treeData, id).map((node) => node.id),
-    ];
+    const deleteIds = getDescendants(treeData, id).map((node) => node.id);
+
+    const opNode = treeData.find((it) => it.id === id);
+    // 删除垃圾筐操作，是清空垃圾筐，垃圾筐本身不能删除
+    if (id !== '/.Trush') deleteIds.push(id);
+
     const newTree = treeData.filter((node) => !deleteIds.includes(node.id));
 
-    if (id.startsWith('/.Trush/')) {
-      await file(id).remove();
+    if (id === '/.Trush') {
+      (await dir('/.Trush').children()).forEach(
+        async (it) => await it.remove()
+      );
+    } else if (id.startsWith('/.Trush/')) {
+      await (opNode.kind === 'dir' ? dir : file)(id).remove();
+    } else if (opNode.kind === 'dir') {
+      await dir(id).moveTo(dir('/.Trush'));
     } else {
       const sameNameInTrush = await file('/.Trush/' + file(id).name).exists();
       const newFile = await file(id).moveTo(dir('/.Trush'));
@@ -110,7 +120,8 @@ function App() {
         newTree.push({
           id: newFile.path,
           parent: newFile.parent.path,
-          droppable: newFile.kind === 'dir',
+          kind: newFile.kind,
+          droppable: false,
           text: newFile.name,
           data: {
             fileType: 'text',
@@ -140,7 +151,7 @@ function App() {
     ).length;
 
     const newName = /copy\d+$/.test(targetNode.text)
-      ? targetNode.text.replace(/\d+$/, copyedCnt + 1)
+      ? targetNode.text.replace(/\d+$/, String(copyedCnt + 1))
       : targetNode.text + ' copy' + (copyedCnt + 1);
     const newNode = {
       ...targetNode,
