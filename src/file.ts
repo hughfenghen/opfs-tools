@@ -132,6 +132,9 @@ export class OPFSFileWrap {
   })();
 
   #writing = false;
+  /**
+   * Random write to file
+   */
   async createWriter() {
     if (this.#writing) throw Error('Other writer have not been closed');
     this.#writing = true;
@@ -172,6 +175,9 @@ export class OPFSFileWrap {
     };
   }
 
+  /**
+   * Random access to file
+   */
   async createReader() {
     const [accHandle, unref] = await this.#getAccessHandle();
 
@@ -248,6 +254,10 @@ export class OPFSFileWrap {
     // fileCache.delete(this.#path);
   }
 
+  /**
+   * If the target is a file, move the current file and overwrite the target;
+   * if the target is a folder, move the current file into that folder.
+   */
   async moveTo(target: OPFSDirWrap | OPFSFileWrap): Promise<OPFSFileWrap> {
     if (!(await this.exists())) {
       throw Error(`file ${this.path} not exists`);
