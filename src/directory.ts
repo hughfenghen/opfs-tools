@@ -32,7 +32,7 @@ export function dir(dirPath: string) {
 }
 
 export class OPFSDirWrap {
-  get kind() {
+  get kind(): 'dir' {
     return 'dir';
   }
 
