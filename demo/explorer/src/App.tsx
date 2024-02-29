@@ -37,10 +37,8 @@ const getLastId = (treeData: NodeModel[]) => {
 };
 
 async function initFiles() {
-  console.log(111, await dir('/').children());
   if ((await dir('/').children()).length != 0) return;
 
-  console.log(222);
   await write('/opfs-tools/dir1/file1', 'file');
   await write('/opfs-tools/dir1/file2', 'file');
   await write('/opfs-tools/dir2/file1', 'file');
@@ -97,12 +95,30 @@ function App() {
   }, []);
 
   const handleDelete = async (id: NodeModel['id']) => {
-    await file(id).remove();
     const deleteIds = [
       id,
       ...getDescendants(treeData, id).map((node) => node.id),
     ];
     const newTree = treeData.filter((node) => !deleteIds.includes(node.id));
+
+    if (id.startsWith('/.Trush/')) {
+      await file(id).remove();
+    } else {
+      const sameNameInTrush = await file('/.Trush/' + file(id).name).exists();
+      const newFile = await file(id).moveTo(dir('/.Trush'));
+      if (!sameNameInTrush) {
+        newTree.push({
+          id: newFile.path,
+          parent: newFile.parent.path,
+          droppable: newFile.kind === 'dir',
+          text: newFile.name,
+          data: {
+            fileType: 'text',
+            fileSize: '0KB',
+          },
+        });
+      }
+    }
 
     setTreeData(newTree);
   };
