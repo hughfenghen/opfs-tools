@@ -70,7 +70,9 @@ function App() {
     newTree: NodeModel<CustomData>[],
     changeData: DropOptions<CustomData>
   ) => {
-    await file(changeData.dragSourceId).moveTo(dir(changeData.dropTargetId));
+    await (changeData.dragSource.kind === 'dir' ? dir : file)(
+      changeData.dragSourceId
+    ).moveTo(dir(changeData.dropTargetId));
     setTreeData(newTree);
   };
   const [open, setOpen] = useState<boolean>(false);
