@@ -81,12 +81,23 @@ async function getInitData(dirPath: string, rs: NodeModel<CustomData>[]) {
 function App() {
   const [treeData, setTreeData] = useState<NodeModel<CustomData>[]>([]);
   const handleDrop = async (
-    newTree: NodeModel<CustomData>[],
+    _: NodeModel<CustomData>[],
     changeData: DropOptions<CustomData>
   ) => {
-    await (changeData.dragSource.kind === 'dir' ? dir : file)(
+    const newDir = await (changeData.dragSource.kind === 'dir' ? dir : file)(
       changeData.dragSourceId
     ).moveTo(dir(changeData.dropTargetId));
+    const newData = (await dirTree(newDir)).map((it) => fsItem2TreeNode(it));
+
+    const deleteIds = getDescendants(treeData, changeData.dragSource.id)
+      .map((node) => node.id)
+      .concat(changeData.dragSource.id)
+      .concat(newData.map((it) => it.id));
+
+    const newTree = treeData
+      .filter((node) => !deleteIds.includes(node.id))
+      .concat(newData);
+
     setTreeData(newTree);
   };
   const [open, setOpen] = useState<boolean>(false);
@@ -107,8 +118,7 @@ function App() {
     // 删除垃圾筐操作，是清空垃圾筐，垃圾筐本身不能删除
     if (id !== '/.Trush') deleteIds.push(id);
 
-    const newTree = treeData.filter((node) => !deleteIds.includes(node.id));
-
+    let newData = [];
     if (id === '/.Trush') {
       (await dir('/.Trush').children()).forEach(
         async (it) => await it.remove()
@@ -117,16 +127,19 @@ function App() {
       await (opNode.kind === 'dir' ? dir : file)(id).remove();
     } else if (opNode.kind === 'dir') {
       const newDir = await dir(id).moveTo(dir('/.Trush'));
-      newTree.push(...(await dirTree(newDir)).map((it) => fsItem2TreeNode(it)));
+      newData.push(...(await dirTree(newDir)).map((it) => fsItem2TreeNode(it)));
     } else {
       const sameNameInTrush = await file('/.Trush/' + file(id).name).exists();
       const newFile = await file(id).moveTo(dir('/.Trush'));
       if (!sameNameInTrush) {
-        newTree.push(fsItem2TreeNode(newFile));
+        newData.push(fsItem2TreeNode(newFile));
       }
     }
-
-    setTreeData(newTree);
+    // 避免 id 重复
+    deleteIds.push(...newData.map((it) => it.id));
+    setTreeData(
+      treeData.filter((node) => !deleteIds.includes(node.id)).concat(newData)
+    );
   };
 
   const handleCopy = async (id: NodeModel['id']) => {
