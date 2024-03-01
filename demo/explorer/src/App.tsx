@@ -160,9 +160,36 @@ function App() {
       text: newName,
       id: targetNode.parent + '/' + newName,
     };
-    await write(newNode.id, file(targetNode.id));
+    const childrenNodes = [];
+    if (targetNode.kind === 'dir') {
+      const copyedDir = await dir(id).copyTo(dir(newNode.id));
+      async function dirTree(
+        it: ReturnType<typeof dir> | ReturnType<typeof file>
+      ): Promise<Array<ReturnType<typeof dir> | ReturnType<typeof file>>> {
+        if (it.kind === 'file') return [it];
+        return (await it.children()).reduce(
+          async (acc, cur) => [...(await acc), ...(await dirTree(cur))],
+          Promise.resolve([it])
+        );
+      }
+      childrenNodes.push(
+        ...(await dirTree(copyedDir)).slice(1).map((it) => ({
+          id: it.path,
+          parent: it.parent.path,
+          droppable: it.kind === 'dir',
+          kind: it.kind,
+          text: it.name,
+          data: {
+            fileType: 'text',
+            fileSize: '0KB',
+          },
+        }))
+      );
+    } else {
+      await file(id).copyTo(file(newNode.id));
+    }
 
-    setTreeData([...treeData, newNode, ...partialTree]);
+    setTreeData([...treeData, newNode, ...childrenNodes, ...partialTree]);
   };
 
   const handleOpenDialog = () => {
