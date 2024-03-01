@@ -164,3 +164,27 @@ test('move file, current file not exists', async () => {
     await file(filePath).moveTo(dir('/'));
   }).rejects.toThrowError();
 });
+
+test('copy file to dir', async () => {
+  await write(filePath, 'foo');
+  const oldFile = file(filePath);
+  const copyed = await oldFile.copyTo(dir('/'));
+  expect(copyed.path).toBe(`/${oldFile.name}`);
+  expect(await oldFile.exists()).toBe(true);
+
+  await copyed.remove();
+});
+
+test('copy file to another file', async () => {
+  await write(filePath, 'foo');
+  const oldFile = file(filePath);
+  let copyed = await oldFile.copyTo(file(filePath));
+  // selft
+  expect(copyed === oldFile).toBe(true);
+
+  copyed = await oldFile.copyTo(file('/abc'));
+  expect(copyed.path).toBe('/abc');
+  expect(await copyed.text()).toBe('foo');
+
+  await file('/abc').remove();
+});

@@ -1,4 +1,4 @@
-import { getFSHandle, parsePath, remove } from './common';
+import { getFSHandle, joinPath, parsePath, remove } from './common';
 import { file, OPFSFileWrap } from './file';
 
 declare global {
@@ -111,25 +111,29 @@ export class OPFSDirWrap {
   }
 
   /**
-   * If the dest folder exists, move the current directory into the dest folder;
+   * If the dest folder exists, copy the current directory into the dest folder;
    * if the dest folder does not exist, rename the current directory to dest name.
    */
-  async moveTo(dest: OPFSDirWrap): Promise<OPFSDirWrap> {
+  async copyTo(dest: OPFSDirWrap) {
     if (!(await this.exists())) {
       throw Error(`dir ${this.path} not exists`);
     }
-
     const newDir = (await dest.exists())
-      ? dir(dest.path + '/' + this.name)
+      ? dir(joinPath(dest.path, this.name))
       : dest;
     await newDir.create();
-    await Promise.all((await this.children()).map((it) => it.moveTo(newDir)));
+    await Promise.all((await this.children()).map((it) => it.copyTo(newDir)));
+
+    return newDir;
+  }
+
+  /**
+   * move directory, copy then remove current
+   */
+  async moveTo(dest: OPFSDirWrap): Promise<OPFSDirWrap> {
+    const newDir = await this.copyTo(dest);
     await this.remove();
 
     return newDir;
   }
-}
-
-function joinPath(p1: string, p2: string) {
-  return `${p1}/${p2}`.replace('//', '/');
 }

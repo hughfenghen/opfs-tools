@@ -58,3 +58,7 @@ export async function remove(path: string) {
 
   await dirHandle.removeEntry(name, { recursive: true });
 }
+
+export function joinPath(p1: string, p2: string) {
+  return `${p1}/${p2}`.replace('//', '/');
+}

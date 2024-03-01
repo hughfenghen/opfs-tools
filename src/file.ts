@@ -1,5 +1,5 @@
 import { OPFSWorkerAccessHandle, createOPFSAccess } from './access-worker';
-import { getFSHandle, parsePath, remove } from './common';
+import { getFSHandle, joinPath, parsePath, remove } from './common';
 import { OPFSDirWrap, dir } from './directory';
 
 const fileCache = new Map<string, OPFSFileWrap>();
@@ -255,20 +255,31 @@ export class OPFSFileWrap {
   }
 
   /**
-   * If the target is a file, move the current file and overwrite the target;
-   * if the target is a folder, move the current file into that folder.
+   * If the target is a file, use current overwrite the target;
+   * if the target is a folder, copy the current file into that folder.
    */
-  async moveTo(target: OPFSDirWrap | OPFSFileWrap): Promise<OPFSFileWrap> {
+  async copyTo(target: OPFSDirWrap | OPFSFileWrap): Promise<OPFSFileWrap> {
     if (!(await this.exists())) {
       throw Error(`file ${this.path} not exists`);
     }
+
     if (target instanceof OPFSFileWrap) {
+      if (file(target.path) === this) return this;
+
       await write(target.path, this);
-      await this.remove();
       return file(target.path);
     } else if (target instanceof OPFSDirWrap) {
-      return await this.moveTo(file(target.path + '/' + this.name));
+      return await this.copyTo(file(joinPath(target.path, this.name)));
     }
     throw Error('Illegal target type');
+  }
+
+  /**
+   * move file, copy then remove current
+   */
+  async moveTo(target: OPFSDirWrap | OPFSFileWrap): Promise<OPFSFileWrap> {
+    const newFile = await this.copyTo(target);
+    await this.remove();
+    return newFile;
   }
 }
