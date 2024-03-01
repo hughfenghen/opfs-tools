@@ -36,6 +36,30 @@ const getLastId = (treeData: NodeModel[]) => {
   return 0;
 };
 
+type FSItem = ReturnType<typeof dir> | ReturnType<typeof file>;
+
+async function dirTree(it: FSItem): Promise<Array<FSItem>> {
+  if (it.kind === 'file') return [it];
+  return (await it.children()).reduce(
+    async (acc, cur) => [...(await acc), ...(await dirTree(cur))],
+    Promise.resolve([it])
+  );
+}
+
+function fsItem2TreeNode(it: FSItem) {
+  return {
+    id: it.path,
+    parent: it.parent?.path,
+    droppable: it.kind === 'dir',
+    kind: it.kind,
+    text: it.name,
+    data: {
+      fileType: 'text',
+      fileSize: '0KB',
+    },
+  };
+}
+
 async function initFiles() {
   if ((await dir('/').children()).length > 1) return;
 
@@ -47,17 +71,7 @@ async function initFiles() {
 
 async function getInitData(dirPath: string, rs: NodeModel<CustomData>[]) {
   for (const it of await dir(dirPath).children()) {
-    rs.push({
-      id: it.path,
-      parent: it.parent.path,
-      droppable: it.kind === 'dir',
-      kind: it.kind,
-      text: it.name,
-      data: {
-        fileType: 'text',
-        fileSize: '0KB',
-      },
-    });
+    rs.push(fsItem2TreeNode(it));
     if (it.kind === 'dir') {
       await getInitData(it.path, rs);
     }
@@ -80,19 +94,7 @@ function App() {
   useEffect(() => {
     (async () => {
       await initFiles();
-      const tree = [
-        {
-          id: '/',
-          parent: null,
-          droppable: false,
-          kind: 'dir' as const,
-          text: 'root',
-          data: {
-            fileType: 'text',
-            fileSize: '0KB',
-          },
-        },
-      ];
+      const tree = [fsItem2TreeNode(dir('/'))];
       await getInitData('/', tree);
       setTreeData(tree);
     })();
@@ -114,22 +116,13 @@ function App() {
     } else if (id.startsWith('/.Trush/')) {
       await (opNode.kind === 'dir' ? dir : file)(id).remove();
     } else if (opNode.kind === 'dir') {
-      await dir(id).moveTo(dir('/.Trush'));
+      const newDir = await dir(id).moveTo(dir('/.Trush'));
+      newTree.push(...(await dirTree(newDir)).map((it) => fsItem2TreeNode(it)));
     } else {
       const sameNameInTrush = await file('/.Trush/' + file(id).name).exists();
       const newFile = await file(id).moveTo(dir('/.Trush'));
       if (!sameNameInTrush) {
-        newTree.push({
-          id: newFile.path,
-          parent: newFile.parent.path,
-          kind: newFile.kind,
-          droppable: false,
-          text: newFile.name,
-          data: {
-            fileType: 'text',
-            fileSize: '0KB',
-          },
-        });
+        newTree.push(fsItem2TreeNode(newFile));
       }
     }
 
@@ -163,27 +156,9 @@ function App() {
     const childrenNodes = [];
     if (targetNode.kind === 'dir') {
       const copyedDir = await dir(id).copyTo(dir(newNode.id));
-      async function dirTree(
-        it: ReturnType<typeof dir> | ReturnType<typeof file>
-      ): Promise<Array<ReturnType<typeof dir> | ReturnType<typeof file>>> {
-        if (it.kind === 'file') return [it];
-        return (await it.children()).reduce(
-          async (acc, cur) => [...(await acc), ...(await dirTree(cur))],
-          Promise.resolve([it])
-        );
-      }
+
       childrenNodes.push(
-        ...(await dirTree(copyedDir)).slice(1).map((it) => ({
-          id: it.path,
-          parent: it.parent.path,
-          droppable: it.kind === 'dir',
-          kind: it.kind,
-          text: it.name,
-          data: {
-            fileType: 'text',
-            fileSize: '0KB',
-          },
-        }))
+        ...(await dirTree(copyedDir)).slice(1).map((it) => fsItem2TreeNode(it))
       );
     } else {
       await file(id).copyTo(file(newNode.id));
