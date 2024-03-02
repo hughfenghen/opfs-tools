@@ -38,13 +38,6 @@ export const CustomNode: React.FC<Props> = (props) => {
       {...dragOverProps}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
-      onClick={(evt) => {
-        if (props.node.kind === 'file') {
-          evt.stopPropagation();
-          evt.preventDefault();
-          props.onPreview(id);
-        }
-      }}
     >
       <div
         className={`${styles.expandIconWrapper} ${
@@ -60,7 +53,16 @@ export const CustomNode: React.FC<Props> = (props) => {
       <div>
         <TypeIcon droppable={droppable} fileType={data?.fileType} />
       </div>
-      <div className={styles.labelGridItem}>
+      <div
+        className={styles.labelGridItem}
+        onClick={(evt) => {
+          if (props.node.kind === 'file') {
+            evt.stopPropagation();
+            evt.preventDefault();
+            props.onPreview(id);
+          }
+        }}
+      >
         <Typography variant="body2">{props.node.text}</Typography>
       </div>
       {hover && (

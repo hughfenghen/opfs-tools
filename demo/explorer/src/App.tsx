@@ -219,7 +219,7 @@ function App() {
       fsItems.push(file(p));
     } else if (nodeType === 'import' && files?.length > 0) {
       await Promise.all(files.map((f) => write(f.name, f.stream())));
-      fsItems.push(...files.map((f) => file(f.name)));
+      fsItems.push(...files.map((f) => file(joinPath('/', f.name))));
     }
 
     setTreeData([...treeData, ...fsItems.map((it) => fsItem2TreeNode(it))]);
