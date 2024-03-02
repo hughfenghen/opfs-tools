@@ -117,7 +117,9 @@ function App() {
     setTreeData(newTree);
   };
   const [openAddDialog, setOpenAddDialog] = useState<boolean>(false);
-  const [selectId, setSelectId] = useState('');
+  const [selectId, setSelectId] = useState(
+    '/f91da7da3ebb478cb4ecd9c1cdd109cf.gif'
+  );
 
   useEffect(() => {
     (async () => {

@@ -1,5 +1,5 @@
 .filePreviewer {
-  background-color: aquamarine;
+  background-color: #f9f9f9;
   position: absolute;
   top: 0;
   right: 0;
@@ -7,15 +7,22 @@
   height: 100%;
   z-index: 1;
 
+  border: 1px solid #eee;
+  padding: 4px;
+
   display: flex;
   flex-direction: column;
 }
 
 .closeIconWrap {
   position: absolute;
-  top: 10px;
+  top: 4px;
   right: 10px;
   cursor: pointer;
+}
+
+.info {
+  margin-bottom: 8px;
 }
 
 .textarea {
@@ -23,15 +30,17 @@
   flex: 1;
   border: none;
   outline: none;
+  padding: 4px;
 }
 
 .saveBtn {
-  margin: 4px;
+  margin: 8px;
   width: 100%;
 }
 
 @media screen and (max-width: 700px) {
   .filePreviewer {
     width: 100%;
+    border: none;
   }
 }
