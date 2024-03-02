@@ -17,6 +17,7 @@ import { AddDialog, NewNodeType } from './AddDialog';
 import { theme } from './theme';
 import styles from './App.module.css';
 import { file, dir, write } from '../../../src';
+import { FilePreviewer } from './FilePreviewer';
 
 const getLastId = (treeData: NodeModel[]) => {
   const reversedArray = [...treeData].sort((a, b) => {
@@ -115,7 +116,8 @@ function App() {
 
     setTreeData(newTree);
   };
-  const [open, setOpen] = useState<boolean>(false);
+  const [openAddDialog, setOpenAddDialog] = useState<boolean>(false);
+  const [selectId, setSelectId] = useState('');
 
   useEffect(() => {
     (async () => {
@@ -199,14 +201,6 @@ function App() {
     downloadFile(file(id));
   };
 
-  const handleOpenDialog = () => {
-    setOpen(true);
-  };
-
-  const handleCloseDialog = () => {
-    setOpen(false);
-  };
-
   const handleSubmit = async ({
     nodeType,
     path,
@@ -229,22 +223,25 @@ function App() {
     }
 
     setTreeData([...treeData, ...fsItems.map((it) => fsItem2TreeNode(it))]);
-    setOpen(false);
+    setOpenAddDialog(false);
   };
 
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <DndProvider backend={MultiBackend} options={getBackendOptions()}>
-        <div className={styles.app}>
+        <div className={styles.app} onClick={() => setSelectId('')}>
           <div>
-            <Button onClick={handleOpenDialog} startIcon={<AddIcon />}>
+            <Button
+              onClick={() => setOpenAddDialog(true)}
+              startIcon={<AddIcon />}
+            >
               Add
             </Button>
-            {open && (
+            {openAddDialog && (
               <AddDialog
                 tree={treeData}
-                onClose={handleCloseDialog}
+                onClose={() => setOpenAddDialog(false)}
                 onSubmit={handleSubmit}
               />
             )}
@@ -259,6 +256,7 @@ function App() {
                 onDelete={handleDelete}
                 onCopy={handleCopy}
                 onExport={handleExport}
+                onPreview={setSelectId}
               />
             )}
             dragPreviewRender={(
@@ -271,6 +269,13 @@ function App() {
               dropTarget: styles.dropTarget,
             }}
           />
+          {selectId !== '' && (
+            <FilePreviewer
+              tree={treeData}
+              id={selectId}
+              onClose={() => setSelectId('')}
+            ></FilePreviewer>
+          )}
         </div>
       </DndProvider>
     </ThemeProvider>

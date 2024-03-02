@@ -1,13 +1,10 @@
 .app {
   height: 100%;
-}
-
-.treeRoot {
-  height: 100%;
+  position: relative;
 }
 
 .draggingSource {
-  opacity: .3;
+  opacity: 0.3;
 }
 
 .dropTarget {

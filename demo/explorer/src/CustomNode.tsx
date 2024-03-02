@@ -16,6 +16,7 @@ type Props = {
   onDelete: (id: NodeModel['id']) => void;
   onCopy: (id: NodeModel['id']) => void;
   onExport: (id: NodeModel['id']) => void;
+  onPreview: (id: NodeModel['id']) => void;
 };
 
 export const CustomNode: React.FC<Props> = (props) => {
@@ -37,6 +38,13 @@ export const CustomNode: React.FC<Props> = (props) => {
       {...dragOverProps}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
+      onClick={(evt) => {
+        if (props.node.kind === 'file') {
+          evt.stopPropagation();
+          evt.preventDefault();
+          props.onPreview(id);
+        }
+      }}
     >
       <div
         className={`${styles.expandIconWrapper} ${
