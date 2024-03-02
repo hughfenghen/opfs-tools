@@ -1,19 +1,19 @@
-import React, { useState } from "react";
-import Typography from "@mui/material/Typography";
-import IconButton from "@mui/material/IconButton";
-import { ArrowRight, Delete, FileCopy } from "@mui/icons-material";
-import { useDragOver } from "@minoru/react-dnd-treeview";
-import { NodeModel, CustomData } from "./types";
-import { TypeIcon } from "./TypeIcon";
-import styles from "./CustomNode.module.css";
+import React, { useState } from 'react';
+import Typography from '@mui/material/Typography';
+import IconButton from '@mui/material/IconButton';
+import { ArrowRight, Delete, FileCopy } from '@mui/icons-material';
+import { useDragOver } from '@minoru/react-dnd-treeview';
+import { NodeModel, CustomData } from './types';
+import { TypeIcon } from './TypeIcon';
+import styles from './CustomNode.module.css';
 
 type Props = {
   node: NodeModel<CustomData>;
   depth: number;
   isOpen: boolean;
-  onToggle: (id: NodeModel["id"]) => void;
-  onDelete: (id: NodeModel["id"]) => void;
-  onCopy: (id: NodeModel["id"]) => void;
+  onToggle: (id: NodeModel['id']) => void;
+  onDelete: (id: NodeModel['id']) => void;
+  onCopy: (id: NodeModel['id']) => void;
 };
 
 export const CustomNode: React.FC<Props> = (props) => {
@@ -38,7 +38,7 @@ export const CustomNode: React.FC<Props> = (props) => {
     >
       <div
         className={`${styles.expandIconWrapper} ${
-          props.isOpen ? styles.isOpen : ""
+          props.isOpen ? styles.isOpen : ''
         }`}
       >
         {props.node.droppable && (
