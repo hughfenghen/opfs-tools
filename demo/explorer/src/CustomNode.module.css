@@ -1,10 +1,9 @@
 .root {
   align-items: center;
-  display: grid;
+  display: flex;
   grid-template-columns: auto auto 1fr auto auto;
   height: 32px;
   padding-inline-end: 8px;
-  width: 250px;
 }
 
 .expandIconWrapper {
@@ -25,6 +24,7 @@
 
 .labelGridItem {
   padding-inline-start: 8px;
+  min-width: 100px;
 }
 
 .actionButton {
