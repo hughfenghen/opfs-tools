@@ -239,7 +239,7 @@ function App() {
         <div className={styles.app}>
           <div>
             <Button onClick={handleOpenDialog} startIcon={<AddIcon />}>
-              Add Node
+              Add
             </Button>
             {open && (
               <AddDialog
