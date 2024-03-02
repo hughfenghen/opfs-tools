@@ -82,6 +82,17 @@ function joinPath(p1: string, p2: string) {
   return `${p1}/${p2}`.replace('//', '/');
 }
 
+async function downloadFile(f: ReturnType<typeof file>) {
+  const url = URL.createObjectURL(new Blob([await f.arrayBuffer()]));
+  const aEl = document.createElement('a');
+  document.body.appendChild(aEl);
+  aEl.setAttribute('href', url);
+  aEl.setAttribute('download', f.name);
+  aEl.setAttribute('target', '_self');
+  aEl.click();
+  aEl.remove();
+}
+
 function App() {
   const [treeData, setTreeData] = useState<NodeModel<CustomData>[]>([]);
   const handleDrop = async (
@@ -184,6 +195,10 @@ function App() {
     setTreeData([...treeData, newNode, ...childrenNodes, ...partialTree]);
   };
 
+  const handleExport = (id: string) => {
+    downloadFile(file(id));
+  };
+
   const handleOpenDialog = () => {
     setOpen(true);
   };
@@ -243,6 +258,7 @@ function App() {
                 {...options}
                 onDelete={handleDelete}
                 onCopy={handleCopy}
+                onExport={handleExport}
               />
             )}
             dragPreviewRender={(

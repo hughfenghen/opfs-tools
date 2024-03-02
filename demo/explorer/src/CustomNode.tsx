@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import Typography from '@mui/material/Typography';
 import IconButton from '@mui/material/IconButton';
 import { ArrowRight, Delete, FileCopy } from '@mui/icons-material';
+import IosShareIcon from '@mui/icons-material/IosShare';
 import { useDragOver } from '@minoru/react-dnd-treeview';
 import { NodeModel, CustomData } from './types';
 import { TypeIcon } from './TypeIcon';
@@ -14,6 +15,7 @@ type Props = {
   onToggle: (id: NodeModel['id']) => void;
   onDelete: (id: NodeModel['id']) => void;
   onCopy: (id: NodeModel['id']) => void;
+  onExport: (id: NodeModel['id']) => void;
 };
 
 export const CustomNode: React.FC<Props> = (props) => {
@@ -65,6 +67,13 @@ export const CustomNode: React.FC<Props> = (props) => {
               <FileCopy fontSize="small" />
             </IconButton>
           </div>
+          {props.node.kind === 'file' && (
+            <div className={styles.actionButton}>
+              <IconButton size="small" onClick={() => props.onExport(id)}>
+                <IosShareIcon fontSize="small" />
+              </IconButton>
+            </div>
+          )}
         </>
       )}
     </div>
