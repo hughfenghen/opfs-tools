@@ -4,6 +4,7 @@ import Button from '@mui/material/Button';
 import { NodeModel } from './types';
 import styles from './FilePreviewer.module.css';
 import { file, write } from '../../../src';
+import { detectFileType } from './utils';
 
 type Props = {
   tree: NodeModel[];
@@ -28,14 +29,6 @@ export const FilePreviewer: React.FC<Props> = ({ id, onClose }) => {
     </div>
   );
 };
-
-function detectFileType(path: string): 'video' | 'audio' | 'image' | 'text' {
-  if (/\.(mp4|av1|ogg|webm|mov)$/.test(path)) return 'video';
-  if (/\.(m4a|mp3)$/.test(path)) return 'audio';
-  if (/\.(png|jpe?g|webp|gif|avif)$/.test(path)) return 'image';
-
-  return 'text';
-}
 
 const FileContent: React.FC<{ id: string }> = ({ id }) => {
   const [text, setText] = useState('');

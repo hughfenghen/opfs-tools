@@ -18,6 +18,7 @@ import { theme } from './theme';
 import styles from './App.module.css';
 import { file, dir, write } from '../../../src';
 import { FilePreviewer } from './FilePreviewer';
+import { detectFileType } from './utils';
 
 const getLastId = (treeData: NodeModel[]) => {
   const reversedArray = [...treeData].sort((a, b) => {
@@ -55,7 +56,7 @@ function fsItem2TreeNode(it: FSItem) {
     kind: it.kind,
     text: it.name,
     data: {
-      fileType: 'text',
+      fileType: detectFileType(it.path),
       fileSize: '0KB',
     },
   };
