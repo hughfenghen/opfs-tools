@@ -13,7 +13,7 @@ import {
 import { NodeModel, CustomData, DropOptions } from './types';
 import { CustomNode } from './CustomNode';
 import { CustomDragPreview } from './CustomDragPreview';
-import { AddDialog } from './AddDialog';
+import { AddDialog, NewNodeType } from './AddDialog';
 import { theme } from './theme';
 import styles from './App.module.css';
 import { file, dir, write } from '../../../src';
@@ -76,6 +76,10 @@ async function getInitData(dirPath: string, rs: NodeModel<CustomData>[]) {
       await getInitData(it.path, rs);
     }
   }
+}
+
+function joinPath(p1: string, p2: string) {
+  return `${p1}/${p2}`.replace('//', '/');
 }
 
 function App() {
@@ -188,16 +192,29 @@ function App() {
     setOpen(false);
   };
 
-  const handleSubmit = (newNode: Omit<NodeModel<CustomData>, 'id'>) => {
-    // const lastId = getLastId(treeData) + 1;
-    // setTreeData([
-    //   ...treeData,
-    //   {
-    //     ...newNode,
-    //     id: lastId,
-    //   },
-    // ]);
-    // setOpen(false);
+  const handleSubmit = async ({
+    nodeType,
+    path,
+    files,
+  }: {
+    nodeType: NewNodeType;
+    path: string;
+    files?: File[];
+  }) => {
+    const p = joinPath('/', path);
+    let fsItems = [];
+    if (nodeType === 'dir') {
+      fsItems.push(await dir(p).create());
+    } else if (nodeType === 'file') {
+      await write(p, '');
+      fsItems.push(file(p));
+    } else if (nodeType === 'import' && files?.length > 0) {
+      await Promise.all(files.map((f) => write(f.name, f.stream())));
+      fsItems.push(...files.map((f) => file(f.name)));
+    }
+
+    setTreeData([...treeData, ...fsItems.map((it) => fsItem2TreeNode(it))]);
+    setOpen(false);
   };
 
   return (

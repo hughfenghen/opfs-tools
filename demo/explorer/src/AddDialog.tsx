@@ -1,47 +1,45 @@
-import React, { useState } from "react";
+import React, { useState } from 'react';
 import {
   Button,
-  Select,
+  RadioGroup,
   TextField,
-  MenuItem,
-  FormControl,
   FormControlLabel,
-  InputLabel,
-  Checkbox,
+  Radio,
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogActions
-} from "@mui/material";
-import { NodeModel } from "./types";
-import styles from "./AddDialog.module.css";
+  DialogActions,
+} from '@mui/material';
+import CloseIcon from '@mui/icons-material/Close';
+import AttachFileIcon from '@mui/icons-material/AttachFile';
+import { MuiFileInput } from 'mui-file-input';
+import { NodeModel } from './types';
+import styles from './AddDialog.module.css';
+
+export type NewNodeType = 'file' | 'dir' | 'import';
 
 type Props = {
   tree: NodeModel[];
   onClose: () => void;
-  onSubmit: (e: Omit<NodeModel, "id">) => void;
+  onSubmit: (e: {
+    nodeType: NewNodeType;
+    path: string;
+    files?: File[];
+  }) => void;
 };
 
 export const AddDialog: React.FC<Props> = (props) => {
-  const [text, setText] = useState("");
-  const [fileType, setFileType] = useState("text");
-  const [parent, setParent] = useState(0);
-  const [droppable, setDroppable] = useState(false);
+  const [path, setPath] = useState('');
+  const [nodeType, setNodeType] = useState<'file' | 'dir' | 'import'>('file');
+
+  const [files, setFiles] = React.useState([]);
+
+  const handleImpFileChange = (newFiles: File[]) => {
+    setFiles(newFiles);
+  };
 
   const handleChangeText = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setText(e.target.value);
-  };
-
-  const handleChangeParent = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setParent(Number(e.target.value));
-  };
-
-  const handleChangeDroppable = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setDroppable(e.target.checked);
-  };
-
-  const handleChangeFileType = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setFileType(e.target.value);
+    setPath(e.target.value);
   };
 
   return (
@@ -49,64 +47,53 @@ export const AddDialog: React.FC<Props> = (props) => {
       <DialogTitle>Add New Node</DialogTitle>
       <DialogContent className={styles.content}>
         <div>
-          <TextField label="Text" onChange={handleChangeText} value={text} />
+          <RadioGroup
+            row
+            onChange={(e) => setNodeType(e.target.value as typeof nodeType)}
+            value={nodeType}
+          >
+            <FormControlLabel value="file" control={<Radio />} label="File" />
+            <FormControlLabel value="dir" control={<Radio />} label="Dir" />
+            <FormControlLabel
+              value="import"
+              control={<Radio />}
+              label="Import"
+            />
+          </RadioGroup>
         </div>
         <div>
-          <FormControl className={styles.select}>
-            <InputLabel>Parent</InputLabel>
-            <Select label="Parent" onChange={handleChangeParent} value={parent}>
-              <MenuItem value={0}>(root)</MenuItem>
-              {props.tree
-                .filter((node) => node.droppable === true)
-                .map((node) => (
-                  <MenuItem key={node.id} value={node.id}>
-                    {node.text}
-                  </MenuItem>
-                ))}
-            </Select>
-          </FormControl>
+          {nodeType === 'import' ? (
+            <MuiFileInput
+              multiple
+              value={files}
+              onChange={handleImpFileChange}
+              clearIconButtonProps={{
+                title: 'Remove',
+                children: <CloseIcon fontSize="small" />,
+              }}
+              InputProps={{
+                startAdornment: <AttachFileIcon />,
+              }}
+            ></MuiFileInput>
+          ) : (
+            <TextField
+              label="path"
+              onChange={handleChangeText}
+              value={path}
+              fullWidth
+            />
+          )}
         </div>
-        <div>
-          <FormControlLabel
-            control={
-              <Checkbox
-                checked={droppable}
-                onChange={handleChangeDroppable}
-                color="primary"
-              />
-            }
-            label="Droppable"
-          />
-        </div>
-        {!droppable && (
-          <div>
-            <FormControl className={styles.select}>
-              <InputLabel>File type</InputLabel>
-              <Select
-                label="FileType"
-                onChange={handleChangeFileType}
-                value={fileType}
-              >
-                <MenuItem value="text">TEXT</MenuItem>
-                <MenuItem value="csv">CSV</MenuItem>
-                <MenuItem value="image">IMAGE</MenuItem>
-              </Select>
-            </FormControl>
-          </div>
-        )}
       </DialogContent>
       <DialogActions>
         <Button onClick={props.onClose}>Cancel</Button>
         <Button
-          disabled={text === ""}
+          disabled={path === '' && files.length === 0}
           onClick={() =>
             props.onSubmit({
-              text,
-              parent,
-              droppable,
-              data: {
-                fileType
-              }
+              nodeType,
+              path,
+              files,
             })
           }
         >

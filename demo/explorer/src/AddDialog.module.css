@@ -1,6 +1,7 @@
 .content {
   display: grid;
   gap: 16px;
+  width: 320px;
 }
 
 .select {

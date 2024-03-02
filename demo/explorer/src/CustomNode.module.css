@@ -25,6 +25,14 @@
 .labelGridItem {
   padding-inline-start: 8px;
   min-width: 100px;
+  max-width: 150px;
+}
+
+.labelGridItem > p {
+  text-overflow: ellipsis;
+  overflow: hidden;
+  text-wrap: nowrap;
+  white-space: nowrap;
 }
 
 .actionButton {
