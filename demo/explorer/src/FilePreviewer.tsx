@@ -1,18 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import CloseIcon from '@mui/icons-material/Close';
 import Button from '@mui/material/Button';
-import { NodeModel } from './types';
+import { CustomData, NodeModel } from './types';
 import styles from './FilePreviewer.module.css';
 import { file, write } from '../../../src';
-import { detectFileType } from './common';
+import { detectFileType, previewNodeAtom } from './common';
+import { FSItemOps } from './FSItemOps';
+import { useAtom } from 'jotai';
 
 type Props = {
   tree: NodeModel[];
-  id: string;
+  node: NodeModel<CustomData>;
   onClose: () => void;
 };
 
-export const FilePreviewer: React.FC<Props> = ({ id, onClose }) => {
+export const FilePreviewer: React.FC<Props> = ({ node, onClose }) => {
+  const id = node.id;
+  const [_, setPreviewNode] = useAtom(previewNodeAtom);
   return (
     <div
       className={styles.filePreviewer}
@@ -25,6 +29,12 @@ export const FilePreviewer: React.FC<Props> = ({ id, onClose }) => {
         <CloseIcon></CloseIcon>
       </div>
       <div className={styles.info}>{id}</div>
+      <div style={{ display: 'flex', marginBottom: '8px' }}>
+        <FSItemOps
+          node={node}
+          onChange={(_, newNode) => setPreviewNode(newNode ?? false)}
+        ></FSItemOps>
+      </div>
       <FileContent id={id}></FileContent>
     </div>
   );

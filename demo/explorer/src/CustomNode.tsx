@@ -12,7 +12,7 @@ type Props = {
   depth: number;
   isOpen: boolean;
   onToggle: (id: NodeModel['id']) => void;
-  onPreview: (id: NodeModel['id']) => void;
+  onPreview: (node: NodeModel<CustomData>) => void;
 };
 
 export const CustomNode: React.FC<Props> = (props) => {
@@ -55,7 +55,7 @@ export const CustomNode: React.FC<Props> = (props) => {
           if (props.node.kind === 'file') {
             evt.stopPropagation();
             evt.preventDefault();
-            props.onPreview(id);
+            props.onPreview(props.node);
           }
         }}
       >

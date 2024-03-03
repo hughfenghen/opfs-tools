@@ -8,9 +8,14 @@ import { dirTree, fsItem2TreeNode, treeDataAtom } from './common';
 import { useAtom } from 'jotai';
 import { getDescendants } from '@minoru/react-dnd-treeview';
 import { dir, file } from '../../../src';
+import { joinPath } from '../../../src/common';
 
 type Props = {
   node: NodeModel<CustomData>;
+  onChange?: (
+    type: 'delete' | 'copy',
+    newNode: NodeModel<CustomData> | null
+  ) => void;
 };
 
 const getLastId = (treeData: NodeModel[]) => {
@@ -42,7 +47,7 @@ async function downloadFile(f: ReturnType<typeof file>) {
   aEl.remove();
 }
 
-export const FSItemOps: React.FC<Props> = ({ node }) => {
+export const FSItemOps: React.FC<Props> = ({ node, onChange }) => {
   const [treeData, setTreeData] = useAtom(treeDataAtom);
   const id = node.id;
 
@@ -60,12 +65,14 @@ export const FSItemOps: React.FC<Props> = ({ node }) => {
       );
     } else if (id.startsWith('/.Trush/')) {
       await (opNode.kind === 'dir' ? dir : file)(id).remove();
+      onChange?.('delete', null);
     } else if (opNode.kind === 'dir') {
       const newDir = await dir(id).moveTo(dir('/.Trush'));
       newData.push(...(await dirTree(newDir)).map((it) => fsItem2TreeNode(it)));
     } else {
       const sameNameInTrush = await file('/.Trush/' + file(id).name).exists();
       const newFile = await file(id).moveTo(dir('/.Trush'));
+      onChange?.('delete', fsItem2TreeNode(newFile));
       if (!sameNameInTrush) {
         newData.push(fsItem2TreeNode(newFile));
       }
@@ -99,7 +106,7 @@ export const FSItemOps: React.FC<Props> = ({ node }) => {
     const newNode = {
       ...targetNode,
       text: newName,
-      id: targetNode.parent + '/' + newName,
+      id: joinPath(targetNode.parent, newName),
     };
     const childrenNodes = [];
     if (targetNode.kind === 'dir') {
@@ -112,6 +119,7 @@ export const FSItemOps: React.FC<Props> = ({ node }) => {
       await file(id).copyTo(file(newNode.id));
     }
 
+    onChange?.('copy', newNode);
     setTreeData([...treeData, newNode, ...childrenNodes, ...partialTree]);
   };
 

@@ -36,3 +36,5 @@ export async function dirTree(it: FSItem): Promise<Array<FSItem>> {
 }
 
 export const treeDataAtom = atom<NodeModel<CustomData>[]>([]);
+
+export const previewNodeAtom = atom<NodeModel<CustomData> | false>(false);

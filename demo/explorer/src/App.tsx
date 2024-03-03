@@ -18,7 +18,12 @@ import { theme } from './theme';
 import styles from './App.module.css';
 import { file, dir, write } from '../../../src';
 import { FilePreviewer } from './FilePreviewer';
-import { dirTree, fsItem2TreeNode, treeDataAtom } from './common';
+import {
+  dirTree,
+  fsItem2TreeNode,
+  previewNodeAtom,
+  treeDataAtom,
+} from './common';
 import { useAtom } from 'jotai';
 
 async function initFiles() {
@@ -45,6 +50,9 @@ function joinPath(p1: string, p2: string) {
 
 function App() {
   const [treeData, setTreeData] = useAtom(treeDataAtom);
+  const [previewNode, setPreviewNode] = useAtom(previewNodeAtom);
+  const [openAddDialog, setOpenAddDialog] = useState<boolean>(false);
+
   const handleDrop = async (
     _: NodeModel<CustomData>[],
     changeData: DropOptions<CustomData>
@@ -65,8 +73,6 @@ function App() {
 
     setTreeData(newTree);
   };
-  const [openAddDialog, setOpenAddDialog] = useState<boolean>(false);
-  const [selectId, setSelectId] = useState('');
 
   useEffect(() => {
     (async () => {
@@ -106,7 +112,7 @@ function App() {
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <DndProvider backend={MultiBackend} options={getBackendOptions()}>
-        <div className={styles.app} onClick={() => setSelectId('')}>
+        <div className={styles.app} onClick={() => setPreviewNode(false)}>
           <div>
             <Button
               onClick={() => setOpenAddDialog(true)}
@@ -126,7 +132,7 @@ function App() {
             tree={treeData}
             rootId={'/'}
             render={(node: NodeModel<CustomData>, options) => (
-              <CustomNode node={node} {...options} onPreview={setSelectId} />
+              <CustomNode node={node} {...options} onPreview={setPreviewNode} />
             )}
             dragPreviewRender={(
               monitorProps: DragLayerMonitorProps<CustomData>
@@ -138,11 +144,11 @@ function App() {
               dropTarget: styles.dropTarget,
             }}
           />
-          {selectId !== '' && (
+          {previewNode != false && (
             <FilePreviewer
               tree={treeData}
-              id={selectId}
-              onClose={() => setSelectId('')}
+              node={previewNode}
+              onClose={() => setPreviewNode(false)}
             ></FilePreviewer>
           )}
         </div>

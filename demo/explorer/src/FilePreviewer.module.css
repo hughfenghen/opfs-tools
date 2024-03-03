@@ -21,10 +21,6 @@
   cursor: pointer;
 }
 
-.info {
-  margin-bottom: 8px;
-}
-
 .textarea {
   width: 100%;
   flex: 1;
