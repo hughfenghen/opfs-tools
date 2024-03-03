@@ -9,9 +9,9 @@ export default defineConfig({
     target: 'ESNext',
     rollupOptions: {
       input: {
-        index: resolve(__dirname, 'benchmark/index.html'),
+        benchmark: resolve(__dirname, 'demo/benchmark.html'),
       },
     },
-    outDir: 'benchmark-dist/',
+    outDir: 'demo-dist/',
   },
 });

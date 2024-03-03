@@ -1,26 +1,42 @@
-import { expect, test } from 'vitest';
+import { expect, test, afterEach, beforeEach } from 'vitest';
 import { file, write } from '../file';
+import { dir } from '../directory';
 
 const filePath = '/unit-test/file';
 
-test('write string to file', async () => {
-  const fp = filePath + '1';
-  await write(fp, 'foo');
-  expect(await file(fp).text()).toBe('foo');
+beforeEach(async () => {
+  await file(filePath).remove();
+});
 
-  await write(fp, 'bar');
-  expect(await file(fp).text()).toBe('bar');
+afterEach(async () => {
+  await file(filePath).remove();
+});
+
+test('write string to file', async () => {
+  await write(filePath, 'foo');
+  expect(await file(filePath).text()).toBe('foo');
+
+  await write(filePath, 'bar');
+  expect(await file(filePath).text()).toBe('bar');
 });
 
 test('write stream to file', async () => {
-  const fp = filePath + '2';
-  await write(fp, new Blob(['I 🩷 坤坤\n'], { type: 'text/plain' }).stream());
-  expect(await file(fp).text()).toBe('I 🩷 坤坤\n');
+  await write(
+    filePath,
+    new Blob(['I 🩷 坤坤\n'], { type: 'text/plain' }).stream()
+  );
+  expect(await file(filePath).text()).toBe('I 🩷 坤坤\n');
+});
+
+test('copy file', async () => {
+  await write(filePath, '111');
+  await write('file copy', file(filePath));
+  expect(await file('file copy').text()).toBe('111');
+  await file('file copy').remove();
 });
 
 test('multiple write operations', async () => {
-  const fp = filePath + '3';
-  const f = file(fp);
+  const f = file(filePath);
   const writer = await f.createWriter();
 
   await writer.truncate(0);
@@ -35,9 +51,8 @@ test('multiple write operations', async () => {
 });
 
 test('read part of a file', async () => {
-  const fp = filePath + '4';
-  await write(fp, new Uint8Array([1, 1, 1, 1, 1, 2, 2, 2, 2, 2]));
-  const reader = await file(fp).createReader();
+  await write(filePath, new Uint8Array([1, 1, 1, 1, 1, 2, 2, 2, 2, 2]));
+  const reader = await file(filePath).createReader();
 
   expect(new Uint8Array(await reader.read(5, { at: 3 }))).toEqual(
     new Uint8Array([1, 1, 2, 2, 2])
@@ -50,8 +65,7 @@ test('read part of a file', async () => {
 });
 
 test('write operation is exclusive', async () => {
-  const fp = filePath + '5';
-  const f = file(fp);
+  const f = file(filePath);
   const writer = await f.createWriter();
   expect(async () => {
     await f.createWriter();
@@ -65,23 +79,22 @@ test('write operation is exclusive', async () => {
 });
 
 test('read operations can be parallelized', async () => {
-  const fp = filePath + '6';
   const str = 'hello world';
-  await write(fp, 'hello world');
-  const f = file(fp);
+  await write(filePath, 'hello world');
+  const f = file(filePath);
   const reader = await f.createReader();
 
   expect(await Promise.all([reader.read(11, { at: 0 }), f.text()])).toEqual([
     new TextEncoder().encode(str).buffer,
     'hello world',
   ]);
+  await reader.close();
 });
 
 test('file to stream', async () => {
-  const fp = filePath + '7';
   const writeData = new Uint8Array(Array(4 * 1024).fill(1));
-  await write(fp, writeData.slice(0));
-  const stream = await file(fp).stream();
+  await write(filePath, writeData.slice(0));
+  const stream = await file(filePath).stream();
   const reader = stream.getReader();
 
   const readData = new Uint8Array(writeData.byteLength);
@@ -96,17 +109,15 @@ test('file to stream', async () => {
 });
 
 test('get file size', async () => {
-  const fp = filePath + '8';
   const str = 'I 🩷 坤坤\n';
-  await write(fp, str);
-  expect(await file(fp).getSize()).toBe(
+  await write(filePath, str);
+  expect(await file(filePath).getSize()).toBe(
     new TextEncoder().encode(str).byteLength // => 14
   );
 });
 
 test('random access', async () => {
-  const fp = filePath + '9';
-  const f = file(fp);
+  const f = file(filePath);
   const reader = await f.createReader();
   const writer = await f.createWriter();
 
@@ -130,7 +141,7 @@ test('random access', async () => {
 });
 
 test('file exists', async () => {
-  const f = file(filePath + '10');
+  const f = file(filePath);
   await f.remove();
 
   expect(await f.exists()).toBe(false);
@@ -139,4 +150,41 @@ test('file exists', async () => {
   expect(await f.exists()).toBe(true);
 
   await f.remove();
+});
+
+test('move file', async () => {
+  await write(filePath, 'foo');
+  const target = await file(filePath).moveTo(dir('/'));
+  expect(await file(filePath).exists()).toBe(false);
+  await target.remove();
+});
+
+test('move file, current file not exists', async () => {
+  expect(async () => {
+    await file(filePath).moveTo(dir('/'));
+  }).rejects.toThrowError();
+});
+
+test('copy file to dir', async () => {
+  await write(filePath, 'foo');
+  const oldFile = file(filePath);
+  const copyed = await oldFile.copyTo(dir('/'));
+  expect(copyed.path).toBe(`/${oldFile.name}`);
+  expect(await oldFile.exists()).toBe(true);
+
+  await copyed.remove();
+});
+
+test('copy file to another file', async () => {
+  await write(filePath, 'foo');
+  const oldFile = file(filePath);
+  let copyed = await oldFile.copyTo(file(filePath));
+  // selft
+  expect(copyed === oldFile).toBe(true);
+
+  copyed = await oldFile.copyTo(file('/abc'));
+  expect(copyed.path).toBe('/abc');
+  expect(await copyed.text()).toBe('foo');
+
+  await file('/abc').remove();
 });
