@@ -100,9 +100,16 @@ export const FSItemOps: React.FC<Props> = ({ node, onChange }) => {
         n.text.startsWith(targetNode.text.replace(/ copy\d+$/, '') + ' copy')
     ).length;
 
+    const suffix = targetNode.text.includes('.')
+      ? `.${targetNode.text.split('.').slice(-1)}`
+      : '';
+    const fileName = targetNode.text.includes('.')
+      ? targetNode.text.split('.').slice(0, -1)
+      : targetNode.text;
     const newName = /copy\d+$/.test(targetNode.text)
-      ? targetNode.text.replace(/\d+$/, String(copyedCnt + 1))
-      : targetNode.text + ' copy' + (copyedCnt + 1);
+      ? targetNode.text.replace(/copy\d+/, String(copyedCnt + 1))
+      : fileName + ' copy' + (copyedCnt + 1) + suffix;
+
     const newNode = {
       ...targetNode,
       text: newName,
