@@ -10,13 +10,11 @@
     "write",
     "browser",
     "Web",
-    "opfs-tools",
     "tools",
     "文件系统",
-    "文件读写",
-    "工具"
+    "文件读写"
   ],
-  "version": "0.1.1",
+  "version": "0.2.0",
   "type": "module",
   "module": "dist/opfs-tools.js",
   "main": "dist/opfs-tools.umd.cjs",
