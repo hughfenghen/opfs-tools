@@ -1,21 +1,17 @@
 import React, { useState } from 'react';
 import Typography from '@mui/material/Typography';
-import IconButton from '@mui/material/IconButton';
-import { ArrowRight, Delete, FileCopy } from '@mui/icons-material';
-import IosShareIcon from '@mui/icons-material/IosShare';
+import { ArrowRight } from '@mui/icons-material';
 import { useDragOver } from '@minoru/react-dnd-treeview';
 import { NodeModel, CustomData } from './types';
 import { TypeIcon } from './TypeIcon';
 import styles from './CustomNode.module.css';
+import { FSItemOps } from './FSItemOps';
 
 type Props = {
   node: NodeModel<CustomData>;
   depth: number;
   isOpen: boolean;
   onToggle: (id: NodeModel['id']) => void;
-  onDelete: (id: NodeModel['id']) => void;
-  onCopy: (id: NodeModel['id']) => void;
-  onExport: (id: NodeModel['id']) => void;
   onPreview: (id: NodeModel['id']) => void;
 };
 
@@ -65,27 +61,7 @@ export const CustomNode: React.FC<Props> = (props) => {
       >
         <Typography variant="body2">{props.node.text}</Typography>
       </div>
-      {hover && (
-        <>
-          <div className={styles.actionButton}>
-            <IconButton size="small" onClick={() => props.onDelete(id)}>
-              <Delete fontSize="small" />
-            </IconButton>
-          </div>
-          <div className={styles.actionButton}>
-            <IconButton size="small" onClick={() => props.onCopy(id)}>
-              <FileCopy fontSize="small" />
-            </IconButton>
-          </div>
-          {props.node.kind === 'file' && (
-            <div className={styles.actionButton}>
-              <IconButton size="small" onClick={() => props.onExport(id)}>
-                <IosShareIcon fontSize="small" />
-              </IconButton>
-            </div>
-          )}
-        </>
-      )}
+      {hover && <FSItemOps node={props.node}></FSItemOps>}
     </div>
   );
 };

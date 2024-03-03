@@ -4,7 +4,7 @@ import Button from '@mui/material/Button';
 import { NodeModel } from './types';
 import styles from './FilePreviewer.module.css';
 import { file, write } from '../../../src';
-import { detectFileType } from './utils';
+import { detectFileType } from './common';
 
 type Props = {
   tree: NodeModel[];

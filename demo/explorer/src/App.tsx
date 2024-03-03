@@ -18,49 +18,8 @@ import { theme } from './theme';
 import styles from './App.module.css';
 import { file, dir, write } from '../../../src';
 import { FilePreviewer } from './FilePreviewer';
-import { detectFileType } from './utils';
-
-const getLastId = (treeData: NodeModel[]) => {
-  const reversedArray = [...treeData].sort((a, b) => {
-    if (a.id < b.id) {
-      return 1;
-    } else if (a.id > b.id) {
-      return -1;
-    }
-
-    return 0;
-  });
-
-  if (reversedArray.length > 0) {
-    return reversedArray[0].id;
-  }
-
-  return 0;
-};
-
-type FSItem = ReturnType<typeof dir> | ReturnType<typeof file>;
-
-async function dirTree(it: FSItem): Promise<Array<FSItem>> {
-  if (it.kind === 'file') return [it];
-  return (await it.children()).reduce(
-    async (acc, cur) => [...(await acc), ...(await dirTree(cur))],
-    Promise.resolve([it])
-  );
-}
-
-function fsItem2TreeNode(it: FSItem) {
-  return {
-    id: it.path,
-    parent: it.parent?.path,
-    droppable: it.kind === 'dir',
-    kind: it.kind,
-    text: it.name,
-    data: {
-      fileType: detectFileType(it.path),
-      fileSize: '0KB',
-    },
-  };
-}
+import { dirTree, fsItem2TreeNode, treeDataAtom } from './common';
+import { useAtom } from 'jotai';
 
 async function initFiles() {
   if ((await dir('/').children()).length > 1) return;
@@ -84,19 +43,8 @@ function joinPath(p1: string, p2: string) {
   return `${p1}/${p2}`.replace('//', '/');
 }
 
-async function downloadFile(f: ReturnType<typeof file>) {
-  const url = URL.createObjectURL(new Blob([await f.arrayBuffer()]));
-  const aEl = document.createElement('a');
-  document.body.appendChild(aEl);
-  aEl.setAttribute('href', url);
-  aEl.setAttribute('download', f.name);
-  aEl.setAttribute('target', '_self');
-  aEl.click();
-  aEl.remove();
-}
-
 function App() {
-  const [treeData, setTreeData] = useState<NodeModel<CustomData>[]>([]);
+  const [treeData, setTreeData] = useAtom(treeDataAtom);
   const handleDrop = async (
     _: NodeModel<CustomData>[],
     changeData: DropOptions<CustomData>
@@ -118,9 +66,7 @@ function App() {
     setTreeData(newTree);
   };
   const [openAddDialog, setOpenAddDialog] = useState<boolean>(false);
-  const [selectId, setSelectId] = useState(
-    '/f91da7da3ebb478cb4ecd9c1cdd109cf.gif'
-  );
+  const [selectId, setSelectId] = useState('');
 
   useEffect(() => {
     (async () => {
@@ -130,79 +76,6 @@ function App() {
       setTreeData(tree);
     })();
   }, []);
-
-  const handleDelete = async (id: NodeModel['id']) => {
-    const deleteIds = getDescendants(treeData, id).map((node) => node.id);
-
-    const opNode = treeData.find((it) => it.id === id);
-    // 删除垃圾筐操作，是清空垃圾筐，垃圾筐本身不能删除
-    if (id !== '/.Trush') deleteIds.push(id);
-
-    let newData = [];
-    if (id === '/.Trush') {
-      (await dir('/.Trush').children()).forEach(
-        async (it) => await it.remove()
-      );
-    } else if (id.startsWith('/.Trush/')) {
-      await (opNode.kind === 'dir' ? dir : file)(id).remove();
-    } else if (opNode.kind === 'dir') {
-      const newDir = await dir(id).moveTo(dir('/.Trush'));
-      newData.push(...(await dirTree(newDir)).map((it) => fsItem2TreeNode(it)));
-    } else {
-      const sameNameInTrush = await file('/.Trush/' + file(id).name).exists();
-      const newFile = await file(id).moveTo(dir('/.Trush'));
-      if (!sameNameInTrush) {
-        newData.push(fsItem2TreeNode(newFile));
-      }
-    }
-    // 避免 id 重复
-    deleteIds.push(...newData.map((it) => it.id));
-    setTreeData(
-      treeData.filter((node) => !deleteIds.includes(node.id)).concat(newData)
-    );
-  };
-
-  const handleCopy = async (id: NodeModel['id']) => {
-    const lastId = getLastId(treeData);
-    const targetNode = treeData.find((n) => n.id === id);
-    const descendants = getDescendants(treeData, id);
-    const partialTree = descendants.map((node: NodeModel<CustomData>) => ({
-      ...node,
-      id: node.id + lastId,
-      parent: node.parent + lastId,
-    }));
-
-    const copyedCnt = treeData.filter(
-      (n) =>
-        n.parent === targetNode.parent &&
-        n.text.startsWith(targetNode.text.replace(/ copy\d+$/, '') + ' copy')
-    ).length;
-
-    const newName = /copy\d+$/.test(targetNode.text)
-      ? targetNode.text.replace(/\d+$/, String(copyedCnt + 1))
-      : targetNode.text + ' copy' + (copyedCnt + 1);
-    const newNode = {
-      ...targetNode,
-      text: newName,
-      id: targetNode.parent + '/' + newName,
-    };
-    const childrenNodes = [];
-    if (targetNode.kind === 'dir') {
-      const copyedDir = await dir(id).copyTo(dir(newNode.id));
-
-      childrenNodes.push(
-        ...(await dirTree(copyedDir)).slice(1).map((it) => fsItem2TreeNode(it))
-      );
-    } else {
-      await file(id).copyTo(file(newNode.id));
-    }
-
-    setTreeData([...treeData, newNode, ...childrenNodes, ...partialTree]);
-  };
-
-  const handleExport = (id: string) => {
-    downloadFile(file(id));
-  };
 
   const handleSubmit = async ({
     nodeType,
@@ -253,14 +126,7 @@ function App() {
             tree={treeData}
             rootId={'/'}
             render={(node: NodeModel<CustomData>, options) => (
-              <CustomNode
-                node={node}
-                {...options}
-                onDelete={handleDelete}
-                onCopy={handleCopy}
-                onExport={handleExport}
-                onPreview={setSelectId}
-              />
+              <CustomNode node={node} {...options} onPreview={setSelectId} />
             )}
             dragPreviewRender={(
               monitorProps: DragLayerMonitorProps<CustomData>
