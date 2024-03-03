@@ -29,7 +29,7 @@ export const FilePreviewer: React.FC<Props> = ({ node, onClose }) => {
         <CloseIcon></CloseIcon>
       </div>
       <div className={styles.info}>{id}</div>
-      <div style={{ display: 'flex', marginBottom: '8px' }}>
+      <div className={styles.fsOpsWrap}>
         <FSItemOps
           node={node}
           onChange={(_, newNode) => setPreviewNode(newNode ?? false)}

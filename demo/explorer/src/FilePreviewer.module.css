@@ -34,9 +34,17 @@
   width: 100%;
 }
 
+.fsOpsWrap {
+  display: none;
+  margin-bottom: 8px;
+}
+
 @media screen and (max-width: 700px) {
   .filePreviewer {
     width: 100%;
     border: none;
+  }
+  .fsOpsWrap {
+    display: flex;
   }
 }
