@@ -6,7 +6,6 @@ function getElById(id: string): HTMLElement {
 
 const fileName = 'testfile';
 const root = await navigator.storage.getDirectory();
-const testFileHandle = await root.getFileHandle(fileName, { create: true });
 
 // Write 100KB of data in one operation, repeat it 1000 times, for a total of 100MB.
 const writeData = Array(1000)
@@ -14,51 +13,61 @@ const writeData = Array(1000)
   .map(() => new Uint8Array(Array(1024 * 100).fill(1)));
 
 let startTime = performance.now();
+let testFileHandle = await root.getFileHandle(fileName, { create: true });
 const writer1 = await testFileHandle.createWritable();
 for (const d of writeData) {
   await writer1.write(d);
 }
-
-getElById('built-in-writer-cost').textContent = `${~~(
-  performance.now() - startTime
-)}ms`;
+updateCost('built-in-writer-cost');
 
 await writer1.truncate(0);
 await writer1.close();
 
-const writer2 = await file(fileName).createWriter();
 startTime = performance.now();
+const writer2 = await file(fileName).createWriter();
 for (const d of writeData) {
   await writer2.write(d);
 }
 await writer2.close();
-getElById('opfs-tools-writer-cost').textContent = `${~~(
-  performance.now() - startTime
-)}ms`;
+updateCost('opfs-tools-writer-cost');
+
+// ------------------------------------------------
 
 const startPoints = Array(10000)
   .fill(true)
   .map(() => ~~(Math.random() * 1e5));
 
-const f1 = await testFileHandle.getFile();
 startTime = performance.now();
+testFileHandle = await root.getFileHandle(fileName, { create: true });
+const f1 = await testFileHandle.getFile();
 for (const p of startPoints) {
   await f1.slice(p, p + 100 * 1024).arrayBuffer();
 }
-getElById('file-slice-read-cost').textContent = `${~~(
-  performance.now() - startTime
-)}ms`;
+updateCost('file-slice-read-cost');
 
-const reader = await file(fileName).createReader();
 startTime = performance.now();
+const reader = await file(fileName).createReader();
 for (const p of startPoints) {
   await reader.read(100 * 1024, { at: p });
 }
 await reader.close();
-getElById('opfs-tools-read-cost').textContent = `${~~(
-  performance.now() - startTime
-)}ms`;
+updateCost('opfs-tools-read-cost');
+
+// ------------------------------------------------
+
+startTime = performance.now();
+testFileHandle = await root.getFileHandle(fileName, { create: true });
+await (await testFileHandle.getFile()).arrayBuffer();
+updateCost('file-slice-read-all-cost');
+
+startTime = performance.now();
+await file(fileName).arrayBuffer();
+updateCost('opfs-tools-read-all-cost');
 
 getElById('status').remove();
+
+function updateCost(id: string) {
+  getElById(id).textContent = `${~~(performance.now() - startTime)}ms`;
+}
 
 export default {};

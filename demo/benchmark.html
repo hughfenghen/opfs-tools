@@ -8,6 +8,8 @@
 </head>
 
 <body>
+  <strong id="status">Running...</strong>
+  <p></p>
   <h2>Write</h2>
   <p>Write 100KB of data in one operation, repeat it 1000 times, for a total of 100MB.</p>
   <div>
@@ -30,8 +32,16 @@
     <a href="https://github.com/hughfenghen/opfs-tools" target="_blank"> opfs-tools:</a>
     <strong id="opfs-tools-read-cost"></strong>
   </div>
+  <p>Read all data of a 100MB file in one go.</p>
+  <div>
+    <a href="https://developer.mozilla.org/en-US/docs/Web/API/Blob/slice" target="_blank">Blobs lice:</a>
+    <strong id="file-slice-read-all-cost"></strong>
+  </div>
+  <div>
+    <a href="https://github.com/hughfenghen/opfs-tools" target="_blank"> opfs-tools:</a>
+    <strong id="opfs-tools-read-all-cost"></strong>
+  </div>
   <p></p>
-  <strong id="status">Running...</strong>
   <script src="./benchmark.ts" type="module"></script>
 </body>
 
