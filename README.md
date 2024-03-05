@@ -2,9 +2,47 @@ EN: A simple, high-performance, and comprehensive file system API running in the
 
 CN: 在浏览器中运行的简单、高性能、完备的文件系统 API，基于 [OPFS](https://developer.mozilla.org/en-US/docs/Web/API/File_System_API/Origin_private_file_system) 构建。
 
+You can experience the [online demo](https://hughfenghen.github.io/opfs-tools-explorer/) at the [opfs-tools-explorer](https://github.com/hughfenghen/opfs-tools-explorer) project.
+
 [**API Documentation**](./docs/api.md)
 
 [Benchmark](https://hughfenghen.github.io/opfs-tools/benchmark/)
+
+## Usage
+
+```js
+import { file, dir, write } from 'opfs-tools';
+
+// --------- Create / Write ---------
+await dir('/test-dir').create(); // create a directory
+
+await write('/dir/file.txt', ''); // empty file
+await write('/dir/fetch-file', (await fetch('//example.com')).body);
+// inputFile from the input element picked by the user
+await write('/dir/input-file', inputFile.stream());
+
+// For incremental file writes, please refer to the API documentation.
+const writer = await file('/dir/file').createWriter();
+
+// --------- Read ---------
+await file('/dir/file.txt').text();
+await file('/dir/input-file').arrayBuffer();
+await file('/dir/input-file').stream();
+
+// If you want to read file fragments, please refer to the API documentation.
+const reader = await file('/dir/input-file').createReader();
+
+await dir('/test-dir').children();
+
+// --------- Remove ---------
+await dir('/test-dir').remove();
+
+await file('/dir/file.txt').remove();
+
+// --------- copyTo / moveTo ---------
+await file('/dir/file').copyTo(file('/dir/file copy1'));
+await dir('/dir').moveTo(dir('/.Trash'));
+```
 
 ## Features
 

@@ -1,5 +1,4 @@
 {
   "editor.formatOnSave": true,
-  "editor.defaultFormatter": "esbenp.prettier-vscode",
-  "prettier.documentSelectors": ["*.ts", "*.json"]
+  "editor.defaultFormatter": "esbenp.prettier-vscode"
 }
