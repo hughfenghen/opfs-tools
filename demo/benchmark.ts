@@ -1,4 +1,11 @@
+import { openDB } from 'idb';
 import { file } from '../src';
+
+const db = await openDB('my-db', 1, {
+  upgrade(db) {
+    db.createObjectStore('data');
+  },
+});
 
 function getElById(id: string): HTMLElement {
   return document.getElementById(id) as HTMLElement;
@@ -20,6 +27,16 @@ for (const d of writeData) {
 }
 updateCost('built-in-writer-cost');
 
+startTime = performance.now();
+let tx = db.transaction('data', 'readwrite');
+let store = tx.objectStore('data');
+let i = 0;
+for (const d of writeData) {
+  store.put(d, `testfile${i++}`);
+}
+await tx.done;
+updateCost('indexeddb-write-cost');
+
 await writer1.truncate(0);
 await writer1.close();
 
@@ -33,7 +50,7 @@ updateCost('opfs-tools-writer-cost');
 
 // ------------------------------------------------
 
-const startPoints = Array(10000)
+const startPoints = Array(1000)
   .fill(true)
   .map(() => ~~(Math.random() * 1e5));
 
@@ -44,6 +61,20 @@ for (const p of startPoints) {
   await f1.slice(p, p + 100 * 1024).arrayBuffer();
 }
 updateCost('file-slice-read-cost');
+
+const idbKeys = Array(1000)
+  .fill(0)
+  .map((_, idx) => `testfile${idx}`);
+
+startTime = performance.now();
+tx = db.transaction('data', 'readwrite');
+store = tx.objectStore('data');
+i = 0;
+for (const k of idbKeys) {
+  await store.get(k);
+}
+await tx.done;
+updateCost('indexeddb-read-cost');
 
 startTime = performance.now();
 const reader = await file(fileName).createReader();

@@ -1,7 +1,7 @@
 import fs from 'fs'
 
 const fileName = './testfile'
-fs.unlinkSync(fileName)
+if (fs.existsSync(fileName)) fs.unlinkSync(fileName)
 
 const writeData = Array(1000)
   .fill(true)
@@ -14,16 +14,16 @@ for (const d of writeData) {
 console.timeEnd('write 100M')
 
 
-const startPoints = Array(10000)
+const startPoints = Array(1000)
   .fill(true)
   .map(() => ~~(Math.random() * 1e5));
 
-console.time('read 100k, 10000 times')
+console.time('read 100k, 1000 times')
 const fd = fs.openSync(fileName, 'r');
 for (const p of startPoints) {
   fs.readSync(fd, Buffer.alloc(100 * 1024), { offset: p })
 }
-console.timeEnd('read 100k, 10000 times')
+console.timeEnd('read 100k, 1000 times')
 
 console.time('read all 100M')
 fs.readFileSync(fileName)

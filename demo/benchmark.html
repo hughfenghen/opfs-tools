@@ -5,6 +5,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>OPFS Tools</title>
+  <style>
+    .tip {
+      font-style: italic;
+    }
+  </style>
 </head>
 
 <body>
@@ -19,31 +24,50 @@
     <strong id="built-in-writer-cost"></strong>
   </div>
   <div>
+    <span>indexeddb:</span>
+    <strong id="indexeddb-write-cost"></strong>
+    <span class="tip">, created 1000 records</span>
+  </div>
+  <div>
     <a href="https://github.com/hughfenghen/opfs-tools" target="_blank"> opfs-tools:</a>
     <strong id="opfs-tools-writer-cost"></strong>
   </div>
-  <div>opfs-tools cost ~1x for nodejs</div>
+  <div>opfs-tools cost ~1x times as much as Node.js</div>
+
+
   <h2>Read</h2>
-  <p>Read 100KB in a single operation, perform 10000 reads with random positions.</p>
+  <p>Read 100KB in a single operation, perform 1000 reads with random positions.</p>
   <div>
     <a href="https://developer.mozilla.org/en-US/docs/Web/API/Blob/slice" target="_blank">Blobs lice:</a>
     <strong id="file-slice-read-cost"></strong>
   </div>
   <div>
+    <span>indexeddb:</span>
+    <strong id="indexeddb-read-cost"></strong>
+    <span class="tip">, read 1000 records sequentially</span>
+  </div>
+  <div>
     <a href="https://github.com/hughfenghen/opfs-tools" target="_blank"> opfs-tools:</a>
     <strong id="opfs-tools-read-cost"></strong>
   </div>
-  <div>opfs-tools cost ~12x for nodejs</div>
+  <div>opfs-tools cost ~4.3x times as much as Node.js</div>
+
+
   <p>Read all data of a 100MB file in one go.</p>
   <div>
     <a href="https://developer.mozilla.org/en-US/docs/Web/API/Blob/slice" target="_blank">Blobs lice:</a>
     <strong id="file-slice-read-all-cost"></strong>
   </div>
   <div>
+    <span>indexeddb:</span>
+    <strong>N/A</strong>
+  </div>
+  <div>
     <a href="https://github.com/hughfenghen/opfs-tools" target="_blank"> opfs-tools:</a>
     <strong id="opfs-tools-read-all-cost"></strong>
   </div>
-  <div>opfs-tools cost ~1.4x for nodejs</div>
+
+  <div>opfs-tools cost ~1.4x times as much as Node.js</div>
   <p></p>
   <script src="./benchmark.ts" type="module"></script>
 </body>
