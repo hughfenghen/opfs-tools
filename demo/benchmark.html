@@ -16,7 +16,11 @@
   <strong id="status">Running...</strong>
   <p></p>
   <h2>Write</h2>
-  <p>Write 100KB of data in one operation, repeat it 1000 times, for a total of 100MB.</p>
+  <p>
+    <span>1. Write 100KB of data in one operation, repeat it 1000 times, for a total of 100MB.</span>
+    <br>
+    <span>每次写入 100KB 数据，重复 1000 次，共 100MB</span>
+  </p>
   <div>
     <a href="https://developer.mozilla.org/en-US/docs/Web/API/FileSystemFileHandle/createWritable"
       target="_blank">FileSystemFileHandle
@@ -26,17 +30,25 @@
   <div>
     <span>indexeddb:</span>
     <strong id="indexeddb-write-cost"></strong>
-    <span class="tip">, created 1000 records</span>
+    <span class="tip">, created 1000 records（创建了 1000 条记录）</span>
   </div>
   <div>
     <a href="https://github.com/hughfenghen/opfs-tools" target="_blank"> opfs-tools:</a>
     <strong id="opfs-tools-writer-cost"></strong>
   </div>
-  <div>opfs-tools cost ~1x times as much as Node.js</div>
+  <p>
+    <span>opfs-tools cost ~1x times as much as Node.js</span>
+    <br>
+    <span>opfs-tools 与 Node.js 耗时差不多</span>
+  </p>
 
 
   <h2>Read</h2>
-  <p>Read 100KB in a single operation, perform 1000 reads with random positions.</p>
+  <p>
+    <span>2. Read 100KB in a single operation, perform 1000 reads with random positions.</span>
+    <br>
+    <span>每次读取 100KB，随机位置读取 1000 次</span>
+  </p>
   <div>
     <a href="https://developer.mozilla.org/en-US/docs/Web/API/Blob/slice" target="_blank">Blobs lice:</a>
     <strong id="file-slice-read-cost"></strong>
@@ -44,30 +56,38 @@
   <div>
     <span>indexeddb:</span>
     <strong id="indexeddb-read-cost"></strong>
-    <span class="tip">, read 1000 records sequentially</span>
+    <span class="tip">, read 1000 records sequentially（顺序读取前面创建的 1000 条记录）</span>
   </div>
   <div>
     <a href="https://github.com/hughfenghen/opfs-tools" target="_blank"> opfs-tools:</a>
     <strong id="opfs-tools-read-cost"></strong>
   </div>
-  <div>opfs-tools cost ~4.3x times as much as Node.js</div>
+  <p>
+    <span>opfs-tools cost ~4.3x times as much as Node.js</span>
+    <br>
+    <span>opfs-tools 耗时大概是 Node.js 的 4.3 倍</span>
+  </p>
 
 
-  <p>Read all data of a 100MB file in one go.</p>
+  <p>
+    <span>3. Read all data of a 100MB file in one go.</span>
+    <br>
+    <span>一次性读取 100MB 文件的所有数据</span>
+  </p>
   <div>
     <a href="https://developer.mozilla.org/en-US/docs/Web/API/Blob/slice" target="_blank">Blobs lice:</a>
     <strong id="file-slice-read-all-cost"></strong>
-  </div>
-  <div>
-    <span>indexeddb:</span>
-    <strong>N/A</strong>
   </div>
   <div>
     <a href="https://github.com/hughfenghen/opfs-tools" target="_blank"> opfs-tools:</a>
     <strong id="opfs-tools-read-all-cost"></strong>
   </div>
 
-  <div>opfs-tools cost ~1.4x times as much as Node.js</div>
+  <p>
+    <span>opfs-tools cost ~1.4x times as much as Node.js</span>
+    <br>
+    <span>opfs-tools 耗时大概是 Node.js 的 1.4 倍</span>
+  </p>
   <p></p>
   <script src="./benchmark.ts" type="module"></script>
 </body>
