@@ -101,4 +101,13 @@ function updateCost(id: string) {
   getElById(id).textContent = `${~~(performance.now() - startTime)}ms`;
 }
 
+// clear
+await file(fileName).remove();
+tx = db.transaction('data', 'readwrite');
+store = tx.objectStore('data');
+for (const k of idbKeys) {
+  await store.delete(k);
+}
+await tx.done;
+
 export default {};
