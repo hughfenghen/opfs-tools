@@ -8,7 +8,9 @@ CN: 在浏览器中运行的简单、高性能、完备的文件系统 API，基
 
 ## Usage
 
-You can experience the [online demo](https://hughfenghen.github.io/opfs-tools-explorer/) at the [opfs-tools-explorer](https://github.com/hughfenghen/opfs-tools-explorer) project.
+_You can experience the [online demo](https://hughfenghen.github.io/opfs-tools-explorer/) at the [opfs-tools-explorer](https://github.com/hughfenghen/opfs-tools-explorer) project._  
+![image](https://github.com/hughfenghen/opfs-tools/assets/3307051/1cf11bc7-92fb-4fde-9a18-5c7e81419e77)
+
 
 ```js
 import { file, dir, write } from 'opfs-tools';
