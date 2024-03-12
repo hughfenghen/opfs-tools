@@ -78,7 +78,7 @@ function getWorkerMsger() {
   }
 
   function create() {
-    const blob = new Blob([`(${opfsWorkerSetup.toString()})()`]);
+    const blob = new Blob([`(${opfsWorkerSetupStr})()`]);
     const url = URL.createObjectURL(blob);
     const worker = new Worker(url);
 
@@ -127,7 +127,7 @@ function getWorkerMsger() {
   }
 }
 
-const opfsWorkerSetup = (): void => {
+const opfsWorkerSetupStr = ((): void => {
   const fileAccesserMap: Record<string, FileSystemSyncAccessHandle> = {};
 
   self.onmessage = async (e) => {
@@ -183,4 +183,4 @@ const opfsWorkerSetup = (): void => {
       });
     }
   };
-};
+}).toString();
