@@ -72,7 +72,7 @@ export declare class OPFSFileWrap {
     }>;
     text(): Promise<string>;
     arrayBuffer(): Promise<ArrayBuffer>;
-    stream(): Promise<ReadableStream<ArrayBuffer>>;
+    stream(): Promise<ReadableStream<Uint8Array>>;
     getSize(): Promise<number>;
     exists(): Promise<boolean>;
     remove(): Promise<void>;
