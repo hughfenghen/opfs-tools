@@ -218,14 +218,14 @@ export class OPFSFileWrap {
     const reader = await this.createReader();
 
     const readLen = 1024;
-    return new ReadableStream<ArrayBuffer>({
+    return new ReadableStream<Uint8Array>({
       pull: async (ctrl) => {
         const buf = await reader.read(readLen);
         if (buf.byteLength === 0) {
           await reader.close();
           ctrl.close();
         }
-        ctrl.enqueue(buf);
+        ctrl.enqueue(new Uint8Array(buf));
       },
       cancel: async () => {
         await reader.close();
