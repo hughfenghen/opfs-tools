@@ -46,6 +46,8 @@ await file('/dir/file').copyTo(file('/dir/file copy1'));
 await dir('/dir').moveTo(dir('/.Trash'));
 ```
 
+文章：[Web 文件系统（OPFS 及工具）介绍](https://hughfenghen.github.io/posts/2024/03/14/web-storage-and-opfs/)
+
 ## Features
 
 - Basic operations
