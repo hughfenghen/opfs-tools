@@ -19,6 +19,13 @@
   "module": "dist/opfs-tools.js",
   "main": "dist/opfs-tools.umd.cjs",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/opfs-tools.js",
+      "require": "./dist/opfs-tools.umd.cjs"
+    }
+  },
   "scripts": {
     "dev": "vite demo",
     "test": "vitest",
