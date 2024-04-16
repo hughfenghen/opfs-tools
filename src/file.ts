@@ -108,12 +108,7 @@ export class OPFSFileWrap {
 
       return (accPromise = new Promise(async (resolve, reject) => {
         try {
-          const fh = (await getFSHandle(this.#path, {
-            create: true,
-            isFile: true,
-          })) as FileSystemFileHandle;
-
-          const accHandle = await createOPFSAccess(this.#path, fh);
+          const accHandle = await createOPFSAccess(this.#path);
           resolve([
             accHandle,
             async () => {

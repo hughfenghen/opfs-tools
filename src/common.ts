@@ -1,3 +1,12 @@
+export interface FileSystemSyncAccessHandle {
+  read: (container: ArrayBuffer, opts: { at: number }) => number;
+  write: (data: ArrayBuffer | ArrayBufferView, opts?: { at: number }) => number;
+  flush: () => void;
+  close: () => void;
+  truncate: (newSize: number) => void;
+  getSize: () => number;
+}
+
 export function parsePath(path: string) {
   if (path === '/') return { parent: null, name: '' };
 
