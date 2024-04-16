@@ -21,11 +21,17 @@ const writeData = Array(1000)
 
 let startTime = performance.now();
 let testFileHandle = await root.getFileHandle(fileName, { create: true });
-const writer1 = await testFileHandle.createWritable();
-for (const d of writeData) {
-  await writer1.write(d);
+if (testFileHandle.createWritable == null) {
+  updateCost('built-in-writer-cost', true);
+} else {
+  const writer1 = await testFileHandle.createWritable();
+  for (const d of writeData) {
+    await writer1.write(d);
+  }
+  updateCost('built-in-writer-cost');
+  await writer1.truncate(0);
+  await writer1.close();
 }
-updateCost('built-in-writer-cost');
 
 startTime = performance.now();
 let tx = db.transaction('data', 'readwrite');
@@ -36,9 +42,6 @@ for (const d of writeData) {
 }
 await tx.done;
 updateCost('indexeddb-write-cost');
-
-await writer1.truncate(0);
-await writer1.close();
 
 startTime = performance.now();
 const writer2 = await file(fileName).createWriter();
@@ -97,8 +100,12 @@ updateCost('opfs-tools-read-all-cost');
 
 getElById('status').remove();
 
-function updateCost(id: string) {
-  getElById(id).textContent = `${~~(performance.now() - startTime)}ms`;
+function updateCost(id: string, unsupported = false) {
+  if (unsupported) {
+    getElById(id).textContent = 'unsupported';
+  } else {
+    getElById(id).textContent = `${~~(performance.now() - startTime)}ms`;
+  }
 }
 
 // clear
