@@ -1,11 +1,5 @@
-interface FileSystemSyncAccessHandle {
-  read: (container: ArrayBuffer, opts: { at: number }) => number;
-  write: (data: ArrayBuffer | ArrayBufferView, opts?: { at: number }) => number;
-  flush: () => void;
-  close: () => void;
-  truncate: (newSize: number) => void;
-  getSize: () => number;
-}
+import { FileSystemSyncAccessHandle } from './common';
+import OPFSWorker from './opfs-worker?worker&inline';
 
 type Async<F> = F extends (...args: infer Params) => infer R
   ? (...args: Params) => Promise<R>
@@ -21,11 +15,10 @@ export type OPFSWorkerAccessHandle = {
 };
 
 export async function createOPFSAccess(
-  filePath: string,
-  fileHandle: FileSystemFileHandle
+  filePath: string
 ): Promise<OPFSWorkerAccessHandle> {
   const postMsg = getWorkerMsger();
-  await postMsg('register', { filePath, fileHandle });
+  await postMsg('register', { filePath });
   return {
     read: async (offset, size) =>
       (await postMsg('read', {
@@ -78,9 +71,7 @@ function getWorkerMsger() {
   }
 
   function create() {
-    const blob = new Blob([`(${opfsWorkerSetupStr})()`]);
-    const url = URL.createObjectURL(blob);
-    const worker = new Worker(url);
+    const worker = new OPFSWorker();
 
     let cbId = 0;
     let cbFns: Record<number, { resolve: Function; reject: Function }> = {};
@@ -126,61 +117,3 @@ function getWorkerMsger() {
     };
   }
 }
-
-const opfsWorkerSetupStr = ((): void => {
-  const fileAccesserMap: Record<string, FileSystemSyncAccessHandle> = {};
-
-  self.onmessage = async (e) => {
-    const { evtType, args } = e.data;
-
-    let accessHandle = fileAccesserMap[args.filePath];
-
-    try {
-      let returnVal;
-      const trans: Transferable[] = [];
-      if (evtType === 'register') {
-        accessHandle = await args.fileHandle.createSyncAccessHandle();
-        fileAccesserMap[args.filePath] = accessHandle;
-      } else if (evtType === 'close') {
-        accessHandle.close();
-        delete fileAccesserMap[args.filePath];
-      } else if (evtType === 'truncate') {
-        accessHandle.truncate(args.newSize);
-      } else if (evtType === 'write') {
-        const { data, opts } = e.data.args;
-        returnVal = accessHandle.write(data, opts);
-      } else if (evtType === 'read') {
-        const { offset, size } = e.data.args;
-        const buf = new ArrayBuffer(size);
-        const readLen = accessHandle.read(buf, { at: offset });
-        returnVal =
-          readLen === size
-            ? buf
-            : // @ts-expect-error transfer support by chrome 114
-              buf.transfer?.(readLen) ?? buf.slice(0, readLen);
-        trans.push(returnVal);
-      } else if (evtType === 'getSize') {
-        returnVal = accessHandle.getSize();
-      } else if (evtType === 'flush') {
-        accessHandle.flush();
-      }
-
-      self.postMessage(
-        {
-          evtType: 'callback',
-          cbId: e.data.cbId,
-          returnVal,
-        },
-        // @ts-expect-error
-        trans
-      );
-    } catch (error) {
-      const err = error as Error;
-      self.postMessage({
-        evtType: 'throwError',
-        cbId: e.data.cbId,
-        errMsg: err.name + ': ' + err.message + '\n' + JSON.stringify(e.data),
-      });
-    }
-  };
-}).toString();
