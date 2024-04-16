@@ -14,7 +14,7 @@
     "文件系统",
     "文件读写"
   ],
-  "version": "0.3.1",
+  "version": "0.3.2",
   "type": "module",
   "module": "dist/opfs-tools.js",
   "main": "dist/opfs-tools.umd.cjs",
