@@ -28,7 +28,7 @@ export function file(filePath: string) {
 
 /**
  * Writes content to the specified file.
- * @param {string} filePath - The path of the file.
+ * @param {string} target - The path of the file.
  * @param {string | BufferSource | ReadableStream<BufferSource>} content - The content to write to the file.
  * return A promise that resolves when the content is written to the file.
  * 
@@ -37,15 +37,18 @@ export function file(filePath: string) {
    await write('/path/to/file.txt', 'Hello, world!');
  */
 export async function write(
-  filePath: string,
+  target: string | OPFSFileWrap,
   content: string | BufferSource | ReadableStream<BufferSource> | OPFSFileWrap
 ) {
   if (content instanceof OPFSFileWrap) {
-    await write(filePath, await content.stream());
+    await write(target, await content.stream());
     return;
   }
 
-  const writer = await file(filePath).createWriter();
+  const writer = await (target instanceof OPFSFileWrap
+    ? target
+    : file(target)
+  ).createWriter();
   try {
     await writer.truncate(0);
     if (content instanceof ReadableStream) {

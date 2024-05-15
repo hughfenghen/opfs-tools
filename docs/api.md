@@ -30,7 +30,7 @@ import { OPFSDirWrap, dir } from './directory';
 export declare function file(filePath: string): OPFSFileWrap;
 /**
  * Writes content to the specified file.
- * @param {string} filePath - The path of the file.
+ * @param {string} target - The path of the file.
  * @param {string | BufferSource | ReadableStream<BufferSource>} content - The content to write to the file.
  * return A promise that resolves when the content is written to the file.
  *
@@ -38,7 +38,7 @@ export declare function file(filePath: string): OPFSFileWrap;
  * // Write content to a file
    await write('/path/to/file.txt', 'Hello, world!');
  */
-export declare function write(filePath: string, content: string | BufferSource | ReadableStream<BufferSource> | OPFSFileWrap): Promise<void>;
+export declare function write(target: string | OPFSFileWrap, content: string | BufferSource | ReadableStream<BufferSource> | OPFSFileWrap): Promise<void>;
 /**
  * Represents a wrapper for interacting with a file in the filesystem.
  */
