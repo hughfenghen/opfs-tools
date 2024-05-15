@@ -33,6 +33,7 @@ export function delByInterval() {
 
 const currentPageTMPFiles: string[] = [];
 let bindedUnloadEvt = false;
+
 // 'export' is for ease of testing
 export async function delMarkFiles() {
   const opfsToolsExpires = 'OPFS_TOOLS_EXPIRES_TMP_FILES';
@@ -66,7 +67,8 @@ export async function delMarkFiles() {
 })();
 
 /**
- * Create a temporary file that will automatically be cleared to avoid occupying too much storage space. The temporary file name will be automatically generated and stored in a specific directory.
+ * Create a temporary file that will automatically be cleared to avoid occupying too much storage space.
+ * The temporary file name will be automatically generated and stored in a specific directory.
  */
 export function tmpfile() {
   const name = `${Math.random().toString().slice(2)}-${Date.now()}`;

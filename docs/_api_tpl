@@ -3,7 +3,7 @@
 The "opfs-tools" library provides three entry functions: "file," "write," and "dir," for accessing files and directories.
 
 ```ts
-import { file, write, dir } from 'opfs-tools'
+import { file, write, dir } from 'opfs-tools';
 ```
 
 ## file
@@ -16,4 +16,10 @@ import { file, write, dir } from 'opfs-tools'
 
 ```ts
 <dir-api>
+```
+
+## tmpfile
+
+```ts
+<tmpfile>
 ```

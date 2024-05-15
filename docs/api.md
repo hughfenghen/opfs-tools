@@ -3,7 +3,7 @@
 The "opfs-tools" library provides three entry functions: "file," "write," and "dir," for accessing files and directories.
 
 ```ts
-import { file, write, dir } from 'opfs-tools'
+import { file, write, dir } from 'opfs-tools';
 ```
 
 ## file
@@ -153,4 +153,14 @@ export declare class OPFSDirWrap {
      */
     moveTo(dest: OPFSDirWrap): Promise<OPFSDirWrap>;
 }
+```
+
+## tmpfile
+
+```ts
+import { OPFSFileWrap } from './file';
+/**
+ * Create a temporary file that will automatically be cleared to avoid occupying too much storage space. The temporary file name will be automatically generated and stored in a specific directory.
+ */
+export declare function tmpfile(): OPFSFileWrap;
 ```
