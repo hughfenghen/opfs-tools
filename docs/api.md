@@ -160,7 +160,8 @@ export declare class OPFSDirWrap {
 ```ts
 import { OPFSFileWrap } from './file';
 /**
- * Create a temporary file that will automatically be cleared to avoid occupying too much storage space. The temporary file name will be automatically generated and stored in a specific directory.
+ * Create a temporary file that will automatically be cleared to avoid occupying too much storage space.
+ * The temporary file name will be automatically generated and stored in a specific directory.
  */
 export declare function tmpfile(): OPFSFileWrap;
 ```

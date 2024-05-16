@@ -215,7 +215,7 @@ export class OPFSFileWrap {
   async stream() {
     const reader = await this.createReader();
 
-    const readLen = 1024;
+    const readLen = 64 * 1024;
     return new ReadableStream<Uint8Array>({
       pull: async (ctrl) => {
         const buf = await reader.read(readLen);
