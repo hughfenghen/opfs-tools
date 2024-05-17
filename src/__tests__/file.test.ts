@@ -20,6 +20,19 @@ test('write string to file', async () => {
   expect(await file(filePath).text()).toBe('bar');
 });
 
+test('append data to file', async () => {
+  const f1 = file(filePath);
+  await write(f1, 'foo');
+  expect(await f1.text()).toBe('foo');
+
+  const f2 = file('/unit-test/file2');
+  await write(f2, 'bar');
+
+  await write(f1, f2, { overwrite: false });
+  await f2.remove();
+  expect(await f1.text()).toBe('foobar');
+});
+
 test('write stream to file', async () => {
   await write(
     filePath,

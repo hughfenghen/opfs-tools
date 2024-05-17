@@ -38,7 +38,9 @@ export declare function file(filePath: string): OPFSFileWrap;
  * // Write content to a file
    await write('/path/to/file.txt', 'Hello, world!');
  */
-export declare function write(target: string | OPFSFileWrap, content: string | BufferSource | ReadableStream<BufferSource> | OPFSFileWrap): Promise<void>;
+export declare function write(target: string | OPFSFileWrap, content: string | BufferSource | ReadableStream<BufferSource> | OPFSFileWrap, opts?: {
+    overwrite: boolean;
+}): Promise<void>;
 /**
  * Represents a wrapper for interacting with a file in the filesystem.
  */
