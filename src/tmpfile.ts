@@ -1,33 +1,36 @@
-import { dir } from './directory';
+import { OPFSDirWrap, dir } from './directory';
 import { OPFSFileWrap, file } from './file';
 
 const TMP_DIR = '/.opfs-tools-temp-dir';
 
-async function safeRemove(f: OPFSFileWrap) {
+async function safeRemove(it: OPFSFileWrap | OPFSDirWrap) {
   try {
-    const writer = await f.createWriter();
-    await writer.truncate(0);
-    await writer.close();
-    await f.remove();
+    if (it.kind === 'file') {
+      const writer = await it.createWriter();
+      await writer.truncate(0);
+      await writer.close();
+      await it.remove();
+    } else {
+      await it.remove();
+    }
+    return true;
   } catch (e) {
-    console.error(e);
+    console.warn(e);
+    return false;
   }
 }
 
 // 'export' is for ease of testing
 export function delByInterval() {
   setInterval(async () => {
-    for (const f of await dir(TMP_DIR).children()) {
-      if (f.kind !== 'file') continue;
-      const match = /^\d+-(\d+)$/.exec(f.name);
-      if (match == null) {
-        await f.remove();
-      } else if (Date.now() - Number(match[1]) > 1000 * 60 * 60 * 24 * 3) {
+    const timeOf3Days = 1000 * 60 * 60 * 24 * 3;
+    for (const it of await dir(TMP_DIR).children()) {
+      const match = /^\d+-(\d+)$/.exec(it.name);
+      if (match == null || Date.now() - Number(match[1]) > timeOf3Days) {
         // Delete files that are older than three days and are not in writing
-        await safeRemove(f);
+        await safeRemove(it);
       }
     }
-    return Promise.resolve();
   }, 60 * 1000);
 }
 
@@ -51,13 +54,14 @@ export async function delMarkFiles() {
     });
   }
 
-  for (const name of (localStorage.getItem(opfsToolsExpires) ?? '').split(
-    ','
-  )) {
+  let markStr = localStorage.getItem(opfsToolsExpires) ?? '';
+  for (const name of markStr.split(',')) {
     if (name.length === 0) continue;
-    await safeRemove(file(`${TMP_DIR}/${name}`));
+    if (await safeRemove(file(`${TMP_DIR}/${name}`))) {
+      markStr = markStr.replace(name, '');
+    }
   }
-  localStorage.setItem(opfsToolsExpires, '');
+  localStorage.setItem(opfsToolsExpires, markStr.replace(/,{2,}/g, ','));
 }
 
 (async function init() {
