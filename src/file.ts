@@ -153,8 +153,8 @@ export class OPFSFileWrap {
         const content = typeof chunk === 'string' ? txtEC.encode(chunk) : chunk;
         const at = opts.at ?? pos;
         const contentSize = content.byteLength;
-        await accHandle.write(content, { at });
         pos = at + contentSize;
+        await accHandle.write(content, { at });
       },
       truncate: async (size: number) => {
         if (closed) throw Error('Writer is closed');
