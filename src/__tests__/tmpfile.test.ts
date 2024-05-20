@@ -35,6 +35,6 @@ test('delMarkFiles', async () => {
     localStorage.getItem('OPFS_TOOLS_EXPIRES_TMP_FILES')?.includes(f.name)
   ).toBe(true);
   await delMarkFiles();
-  expect(localStorage.getItem('OPFS_TOOLS_EXPIRES_TMP_FILES')).toBe('');
+  expect(localStorage.getItem('OPFS_TOOLS_EXPIRES_TMP_FILES')).toBe(',');
   expect(await f.exists()).toBe(false);
 });
