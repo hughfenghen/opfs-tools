@@ -30,7 +30,7 @@ test('delMarkFiles', async () => {
   const f = tmpfile();
   await write(f, 'mark');
   expect(await f.exists()).toBe(true);
-  window.dispatchEvent(new Event('unload'));
+  self.dispatchEvent(new Event('unload'));
   expect(
     localStorage.getItem('OPFS_TOOLS_EXPIRES_TMP_FILES')?.includes(f.name)
   ).toBe(true);

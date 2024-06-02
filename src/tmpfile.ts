@@ -43,7 +43,7 @@ export async function delMarkFiles() {
 
   if (!bindedUnloadEvt) {
     bindedUnloadEvt = true;
-    window.addEventListener('unload', () => {
+    self.addEventListener('unload', () => {
       if (currentPageTMPFiles.length === 0) return;
       localStorage.setItem(
         opfsToolsExpires,
