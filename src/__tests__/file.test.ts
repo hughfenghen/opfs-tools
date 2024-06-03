@@ -158,8 +158,8 @@ test('file exists', async () => {
   await f.remove();
 
   expect(await f.exists()).toBe(false);
-  // auto create
-  expect(await f.getSize()).toBe(0);
+
+  await write(f, '');
   expect(await f.exists()).toBe(true);
 
   await f.remove();

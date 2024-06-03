@@ -22,8 +22,10 @@ test('dir children', async () => {
   await d.remove();
   expect(await d.children()).toEqual([]);
 
-  expect(await file(`${path}/1`).getSize()).toBe(0);
-  expect(await d.children()).toEqual([file(`${path}/1`)]);
+  const nf = file(`${path}/1`);
+  await write(nf, '');
+  expect(await d.children()).toEqual([nf]);
+  await nf.remove();
 });
 
 test('move dir, dest not exists', async () => {

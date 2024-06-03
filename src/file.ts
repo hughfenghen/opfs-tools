@@ -232,10 +232,9 @@ export class OPFSFileWrap {
   }
 
   async getSize() {
-    const reader = await this.createReader();
-    const size = await reader.getSize();
-    await reader.close();
-    return size;
+    const fh = await getFSHandle(this.#path, { create: false, isFile: true });
+    if (fh == null) return 0;
+    return (await fh.getFile()).size;
   }
 
   async exists() {
