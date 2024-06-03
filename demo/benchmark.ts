@@ -89,14 +89,14 @@ updateCost('opfs-tools-read-cost');
 
 // ------------------------------------------------
 
-startTime = performance.now();
-testFileHandle = await root.getFileHandle(fileName, { create: true });
-await (await testFileHandle.getFile()).arrayBuffer();
-updateCost('file-slice-read-all-cost');
+// startTime = performance.now();
+// testFileHandle = await root.getFileHandle(fileName, { create: true });
+// await (await testFileHandle.getFile()).arrayBuffer();
+// updateCost('file-slice-read-all-cost');
 
-startTime = performance.now();
-await file(fileName).arrayBuffer();
-updateCost('opfs-tools-read-all-cost');
+// startTime = performance.now();
+// await file(fileName).arrayBuffer();
+// updateCost('opfs-tools-read-all-cost');
 
 getElById('status').remove();
 

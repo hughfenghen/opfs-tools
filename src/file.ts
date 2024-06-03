@@ -207,10 +207,9 @@ export class OPFSFileWrap {
   }
 
   async arrayBuffer() {
-    const reader = await this.createReader();
-    const buf = await reader.read(await reader.getSize(), { at: 0 });
-    await reader.close();
-    return buf;
+    const fh = await getFSHandle(this.#path, { create: false, isFile: true });
+    if (fh == null) return new ArrayBuffer(0);
+    return (await fh.getFile()).arrayBuffer();
   }
 
   async stream() {

@@ -11,12 +11,12 @@ self.onmessage = async (e) => {
     let returnVal;
     const trans: Transferable[] = [];
     if (evtType === 'register') {
-      const fh =
-        args.fileHandle ??
-        ((await getFSHandle(args.filePath, {
-          create: true,
-          isFile: true,
-        })) as FileSystemFileHandle);
+      const fh = await getFSHandle(args.filePath, {
+        create: true,
+        isFile: true,
+      });
+      if (fh == null) throw Error(`not found file: ${args.filePath}`);
+      // @ts-expect-error
       accessHandle = await fh.createSyncAccessHandle();
       fileAccesserMap[args.filePath] = accessHandle;
     } else if (evtType === 'close') {
