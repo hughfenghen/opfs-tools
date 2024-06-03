@@ -20,15 +20,21 @@ export function parsePath(path: string) {
   return { name, parent };
 }
 
-export async function getFSHandle(
+export async function getFSHandle<
+  ISFile extends boolean,
+  RT =
+    | (ISFile extends true ? FileSystemFileHandle : FileSystemDirectoryHandle)
+    | null
+>(
   path: string,
   opts: {
     create?: boolean;
-    isFile?: boolean;
+    isFile?: ISFile;
   }
-) {
+): Promise<RT> {
   const { parent, name } = parsePath(path);
-  if (parent == null) return await navigator.storage.getDirectory();
+
+  if (parent == null) return (await navigator.storage.getDirectory()) as RT;
 
   const dirPaths = parent.split('/').filter((s) => s.length > 0);
 
@@ -40,12 +46,16 @@ export async function getFSHandle(
       });
     }
     if (opts.isFile) {
-      return await dirHandle.getFileHandle(name, { create: opts.create });
+      return (await dirHandle.getFileHandle(name, {
+        create: opts.create,
+      })) as RT;
     } else {
-      return await dirHandle.getDirectoryHandle(name, { create: opts.create });
+      return (await dirHandle.getDirectoryHandle(name, {
+        create: opts.create,
+      })) as RT;
     }
   } catch (err) {
-    return null;
+    return null as RT;
   }
 }
 
