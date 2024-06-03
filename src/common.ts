@@ -22,13 +22,13 @@ export function parsePath(path: string) {
 
 export async function getFSHandle<
   ISFile extends boolean,
-  RT =
-    | (ISFile extends true ? FileSystemFileHandle : FileSystemDirectoryHandle)
-    | null
+  ISCreate extends boolean,
+  T = ISFile extends true ? FileSystemFileHandle : FileSystemDirectoryHandle,
+  RT = ISCreate extends true ? T : T | null
 >(
   path: string,
   opts: {
-    create?: boolean;
+    create?: ISCreate;
     isFile?: ISFile;
   }
 ): Promise<RT> {
