@@ -100,14 +100,14 @@ export class OPFSFileWrap {
     this.#parentPath = parent;
   }
 
+  #referCnt = 0;
   #getAccessHandle = (() => {
-    let referCnt = 0;
     let accPromise: Promise<
       [OPFSWorkerAccessHandle, () => Promise<void>]
     > | null = null;
 
     return () => {
-      referCnt += 1;
+      this.#referCnt += 1;
       if (accPromise != null) return accPromise;
 
       return (accPromise = new Promise(async (resolve, reject) => {
@@ -116,8 +116,8 @@ export class OPFSFileWrap {
           resolve([
             accHandle,
             async () => {
-              referCnt -= 1;
-              if (referCnt > 0) return;
+              this.#referCnt -= 1;
+              if (this.#referCnt > 0) return;
 
               accPromise = null;
               await accHandle.close();
@@ -240,6 +240,7 @@ export class OPFSFileWrap {
   }
 
   async remove() {
+    if (this.#referCnt) throw Error('exists unclosed reader/writer');
     await remove(this.#path);
     // fileCache.delete(this.#path);
   }
