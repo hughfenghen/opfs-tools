@@ -57,7 +57,7 @@ export declare class OPFSFileWrap {
     createWriter(): Promise<{
         write: (chunk: string | BufferSource, opts?: {
             at?: number;
-        }) => Promise<void>;
+        }) => Promise<number>;
         truncate: (size: number) => Promise<void>;
         flush: () => Promise<void>;
         close: () => Promise<void>;
