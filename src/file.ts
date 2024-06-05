@@ -154,7 +154,7 @@ export class OPFSFileWrap {
         const at = opts.at ?? pos;
         const contentSize = content.byteLength;
         pos = at + contentSize;
-        await accHandle.write(content, { at });
+        return await accHandle.write(content, { at });
       },
       truncate: async (size: number) => {
         if (closed) throw Error('Writer is closed');
