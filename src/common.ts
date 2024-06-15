@@ -1,10 +1,13 @@
 export interface FileSystemSyncAccessHandle {
-  read: (container: ArrayBuffer, opts: { at: number }) => number;
-  write: (data: ArrayBuffer | ArrayBufferView, opts?: { at: number }) => number;
-  flush: () => void;
-  close: () => void;
-  truncate: (newSize: number) => void;
-  getSize: () => number;
+  read: (container: ArrayBuffer, opts: { at: number }) => Promise<number>;
+  write: (
+    data: ArrayBuffer | ArrayBufferView,
+    opts?: { at: number }
+  ) => Promise<number>;
+  flush: () => Promise<void>;
+  close: () => Promise<void>;
+  truncate: (newSize: number) => Promise<void>;
+  getSize: () => Promise<number>;
 }
 
 export function parsePath(path: string) {

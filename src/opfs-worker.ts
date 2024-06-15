@@ -20,17 +20,18 @@ self.onmessage = async (e) => {
       accessHandle = await fh.createSyncAccessHandle();
       fileAccesserMap[args.filePath] = accessHandle;
     } else if (evtType === 'close') {
-      accessHandle.close();
+      await accessHandle.close();
       delete fileAccesserMap[args.filePath];
     } else if (evtType === 'truncate') {
-      accessHandle.truncate(args.newSize);
+      await accessHandle.truncate(args.newSize);
     } else if (evtType === 'write') {
       const { data, opts } = e.data.args;
-      returnVal = accessHandle.write(data, opts);
+      returnVal = await accessHandle.write(data, opts);
     } else if (evtType === 'read') {
       const { offset, size } = e.data.args;
-      const buf = new ArrayBuffer(size);
-      const readLen = accessHandle.read(buf, { at: offset });
+      const uint8Buf = new Uint8Array(size);
+      const readLen = await accessHandle.read(uint8Buf, { at: offset });
+      const buf = uint8Buf.buffer;
       returnVal =
         readLen === size
           ? buf
@@ -38,9 +39,9 @@ self.onmessage = async (e) => {
             buf.transfer?.(readLen) ?? buf.slice(0, readLen);
       trans.push(returnVal);
     } else if (evtType === 'getSize') {
-      returnVal = accessHandle.getSize();
+      returnVal = await accessHandle.getSize();
     } else if (evtType === 'flush') {
-      accessHandle.flush();
+      await accessHandle.flush();
     }
 
     self.postMessage(
