@@ -1,17 +1,13 @@
 import { FileSystemSyncAccessHandle } from './common';
 import OPFSWorker from './opfs-worker?worker&inline';
 
-type Async<F> = F extends (...args: infer Params) => infer R
-  ? (...args: Params) => Promise<R>
-  : never;
-
 export type OPFSWorkerAccessHandle = {
   read: (offset: number, size: number) => Promise<ArrayBuffer>;
-  write: Async<FileSystemSyncAccessHandle['write']>;
-  close: Async<FileSystemSyncAccessHandle['close']>;
-  truncate: Async<FileSystemSyncAccessHandle['truncate']>;
-  getSize: Async<FileSystemSyncAccessHandle['getSize']>;
-  flush: Async<FileSystemSyncAccessHandle['flush']>;
+  write: FileSystemSyncAccessHandle['write'];
+  close: FileSystemSyncAccessHandle['close'];
+  truncate: FileSystemSyncAccessHandle['truncate'];
+  getSize: FileSystemSyncAccessHandle['getSize'];
+  flush: FileSystemSyncAccessHandle['flush'];
 };
 
 export async function createOPFSAccess(
