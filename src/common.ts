@@ -58,7 +58,10 @@ export async function getFSHandle<
       })) as RT;
     }
   } catch (err) {
-    return null as RT;
+    if ((err as Error).name === 'NotFoundError') {
+      return null as RT;
+    }
+    throw err;
   }
 }
 
