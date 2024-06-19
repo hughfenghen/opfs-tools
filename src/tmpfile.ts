@@ -39,6 +39,8 @@ let bindedUnloadEvt = false;
 
 // 'export' is for ease of testing
 export async function delMarkFiles() {
+  if (self.localStorage == null) return;
+
   const opfsToolsExpires = 'OPFS_TOOLS_EXPIRES_TMP_FILES';
 
   if (!bindedUnloadEvt) {
