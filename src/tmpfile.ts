@@ -6,6 +6,8 @@ const TMP_DIR = '/.opfs-tools-temp-dir';
 async function safeRemove(it: OPFSFileWrap | OPFSDirWrap) {
   try {
     if (it.kind === 'file') {
+      if (!(await it.exists())) return true;
+
       const writer = await it.createWriter();
       await writer.truncate(0);
       await writer.close();
