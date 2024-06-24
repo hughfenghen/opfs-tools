@@ -41,13 +41,13 @@ let bindedUnloadEvt = false;
 
 // 'export' is for ease of testing
 export async function delMarkFiles() {
-  if (self.localStorage == null) return;
+  if (globalThis.localStorage == null) return;
 
   const opfsToolsExpires = 'OPFS_TOOLS_EXPIRES_TMP_FILES';
 
   if (!bindedUnloadEvt) {
     bindedUnloadEvt = true;
-    self.addEventListener('unload', () => {
+    globalThis.addEventListener('unload', () => {
       if (currentPageTMPFiles.length === 0) return;
       localStorage.setItem(
         opfsToolsExpires,
@@ -69,6 +69,14 @@ export async function delMarkFiles() {
 }
 
 (async function init() {
+  // not web context
+  if (
+    globalThis.FileSystemDirectoryHandle == null ||
+    globalThis.FileSystemFileHandle == null
+  ) {
+    return;
+  }
+
   // clear tmpfile
   delByInterval();
   await delMarkFiles();
