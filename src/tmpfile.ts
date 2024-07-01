@@ -81,7 +81,8 @@ declare global {
   // not web context
   if (
     globalThis.FileSystemDirectoryHandle == null ||
-    globalThis.FileSystemFileHandle == null
+    globalThis.FileSystemFileHandle == null ||
+    globalThis.navigator?.storage.getDirectory == null
   ) {
     return;
   }
