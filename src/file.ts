@@ -195,7 +195,7 @@ export class OPFSFileWrap {
         return await accHandle.getSize();
       },
       close: async () => {
-        if (closed) throw Error('Reader is closed');
+        if (closed) return;
         closed = true;
         await unref();
       },

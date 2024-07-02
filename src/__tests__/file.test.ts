@@ -201,3 +201,11 @@ test('copy file to another file', async () => {
 
   await file('/abc').remove();
 });
+
+test('close reader twice', async () => {
+  await write(filePath, 'foo');
+  const f = file(filePath);
+  const reader = await f.createReader();
+  await reader.close();
+  await reader.close();
+});
