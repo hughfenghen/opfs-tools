@@ -213,15 +213,22 @@ export class OPFSFileWrap {
   }
 
   async stream() {
-    const fh = await getFSHandle(this.#path, { create: false, isFile: true });
-    if (fh == null) {
+    const ofile = await this.getOriginFile();
+    if (ofile == null) {
       return new ReadableStream<Uint8Array>({
         pull: (ctrl) => {
           ctrl.close();
         },
       });
     }
-    return (await fh.getFile()).stream();
+
+    return ofile.stream();
+  }
+
+  async getOriginFile() {
+    return (
+      await getFSHandle(this.#path, { create: false, isFile: true })
+    )?.getFile();
   }
 
   async getSize() {
