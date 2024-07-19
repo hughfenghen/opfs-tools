@@ -38,55 +38,66 @@ export declare function file(filePath: string): OPFSFileWrap;
  * // Write content to a file
    await write('/path/to/file.txt', 'Hello, world!');
  */
-export declare function write(target: string | OPFSFileWrap, content: string | BufferSource | ReadableStream<BufferSource> | OPFSFileWrap, opts?: {
+export declare function write(
+  target: string | OPFSFileWrap,
+  content: string | BufferSource | ReadableStream<BufferSource> | OPFSFileWrap,
+  opts?: {
     overwrite: boolean;
-}): Promise<void>;
+  }
+): Promise<void>;
 /**
  * Represents a wrapper for interacting with a file in the filesystem.
  */
 export declare class OPFSFileWrap {
-    #private;
-    get kind(): 'file';
-    get path(): string;
-    get name(): string;
-    get parent(): ReturnType<typeof dir> | null;
-    constructor(filePath: string);
-    /**
-     * Random write to file
-     */
-    createWriter(): Promise<{
-        write: (chunk: string | BufferSource, opts?: {
-            at?: number;
-        }) => Promise<number>;
-        truncate: (size: number) => Promise<void>;
-        flush: () => Promise<void>;
-        close: () => Promise<void>;
-    }>;
-    /**
-     * Random access to file
-     */
-    createReader(): Promise<{
-        read: (size: number, opts?: {
-            at?: number;
-        }) => Promise<ArrayBuffer>;
-        getSize: () => Promise<number>;
-        close: () => Promise<void>;
-    }>;
-    text(): Promise<string>;
-    arrayBuffer(): Promise<ArrayBuffer>;
-    stream(): Promise<ReadableStream<Uint8Array>>;
-    getSize(): Promise<number>;
-    exists(): Promise<boolean>;
-    remove(): Promise<void>;
-    /**
-     * If the target is a file, use current overwrite the target;
-     * if the target is a folder, copy the current file into that folder.
-     */
-    copyTo(target: OPFSDirWrap | OPFSFileWrap): Promise<OPFSFileWrap>;
-    /**
-     * move file, copy then remove current
-     */
-    moveTo(target: OPFSDirWrap | OPFSFileWrap): Promise<OPFSFileWrap>;
+  #private;
+  get kind(): 'file';
+  get path(): string;
+  get name(): string;
+  get parent(): ReturnType<typeof dir> | null;
+  constructor(filePath: string);
+  /**
+   * Random write to file
+   */
+  createWriter(): Promise<{
+    write: (
+      chunk: string | BufferSource,
+      opts?: {
+        at?: number;
+      }
+    ) => Promise<number>;
+    truncate: (size: number) => Promise<void>;
+    flush: () => Promise<void>;
+    close: () => Promise<void>;
+  }>;
+  /**
+   * Random access to file
+   */
+  createReader(): Promise<{
+    read: (
+      size: number,
+      opts?: {
+        at?: number;
+      }
+    ) => Promise<ArrayBuffer>;
+    getSize: () => Promise<number>;
+    close: () => Promise<void>;
+  }>;
+  text(): Promise<string>;
+  arrayBuffer(): Promise<ArrayBuffer>;
+  stream(): Promise<ReadableStream<Uint8Array>>;
+  getOriginFile(): Promise<File | undefined>;
+  getSize(): Promise<number>;
+  exists(): Promise<boolean>;
+  remove(): Promise<void>;
+  /**
+   * If the target is a file, use current overwrite the target;
+   * if the target is a folder, copy the current file into that folder.
+   */
+  copyTo(target: OPFSDirWrap | OPFSFileWrap): Promise<OPFSFileWrap>;
+  /**
+   * move file, copy then remove current
+   */
+  moveTo(target: OPFSDirWrap | OPFSFileWrap): Promise<OPFSFileWrap>;
 }
 ```
 
@@ -95,10 +106,12 @@ export declare class OPFSFileWrap {
 ```ts
 import { OPFSFileWrap } from './file';
 declare global {
-    interface FileSystemDirectoryHandle {
-        keys: () => AsyncIterable<string>;
-        values: () => AsyncIterable<FileSystemDirectoryHandle | FileSystemFileHandle>;
-    }
+  interface FileSystemDirectoryHandle {
+    keys: () => AsyncIterable<string>;
+    values: () => AsyncIterable<
+      FileSystemDirectoryHandle | FileSystemFileHandle
+    >;
+  }
 }
 /**
  * Represents a directory with utility functions.
@@ -119,41 +132,41 @@ declare global {
  */
 export declare function dir(dirPath: string): OPFSDirWrap;
 export declare class OPFSDirWrap {
-    #private;
-    get kind(): 'dir';
-    get name(): string;
-    get path(): string;
-    get parent(): OPFSDirWrap | null;
-    constructor(dirPath: string);
-    /**
-     * Creates the directory.
-     * return A promise that resolves when the directory is created.
-     */
-    create(): Promise<OPFSDirWrap>;
-    /**
-     * Checks if the directory exists.
-     * return A promise that resolves to true if the directory exists, otherwise false.
-     */
-    exists(): Promise<boolean>;
-    /**
-     * Removes the directory.
-     * return A promise that resolves when the directory is removed.
-     */
-    remove(): Promise<void>;
-    /**
-     * Retrieves the children of the directory.
-     * return A promise that resolves to an array of objects representing the children.
-     */
-    children(): Promise<Array<OPFSDirWrap | OPFSFileWrap>>;
-    /**
-     * If the dest folder exists, copy the current directory into the dest folder;
-     * if the dest folder does not exist, rename the current directory to dest name.
-     */
-    copyTo(dest: OPFSDirWrap): Promise<OPFSDirWrap>;
-    /**
-     * move directory, copy then remove current
-     */
-    moveTo(dest: OPFSDirWrap): Promise<OPFSDirWrap>;
+  #private;
+  get kind(): 'dir';
+  get name(): string;
+  get path(): string;
+  get parent(): OPFSDirWrap | null;
+  constructor(dirPath: string);
+  /**
+   * Creates the directory.
+   * return A promise that resolves when the directory is created.
+   */
+  create(): Promise<OPFSDirWrap>;
+  /**
+   * Checks if the directory exists.
+   * return A promise that resolves to true if the directory exists, otherwise false.
+   */
+  exists(): Promise<boolean>;
+  /**
+   * Removes the directory.
+   * return A promise that resolves when the directory is removed.
+   */
+  remove(): Promise<void>;
+  /**
+   * Retrieves the children of the directory.
+   * return A promise that resolves to an array of objects representing the children.
+   */
+  children(): Promise<Array<OPFSDirWrap | OPFSFileWrap>>;
+  /**
+   * If the dest folder exists, copy the current directory into the dest folder;
+   * if the dest folder does not exist, rename the current directory to dest name.
+   */
+  copyTo(dest: OPFSDirWrap): Promise<OPFSDirWrap>;
+  /**
+   * move directory, copy then remove current
+   */
+  moveTo(dest: OPFSDirWrap): Promise<OPFSDirWrap>;
 }
 ```
 
