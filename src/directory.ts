@@ -89,7 +89,18 @@ export class OPFSDirWrap {
    * return A promise that resolves when the directory is removed.
    */
   async remove() {
-    await remove(this.#path);
+    for (const it of await this.children()) {
+      try {
+        await it.remove();
+      } catch (err) {
+        console.warn(err);
+      }
+    }
+    try {
+      await remove(this.#path);
+    } catch (err) {
+      console.warn(err);
+    }
   }
 
   /**

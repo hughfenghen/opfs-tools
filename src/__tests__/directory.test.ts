@@ -59,3 +59,18 @@ test('move dir, dest is exists', async () => {
 
   await trushDir.remove();
 });
+
+test('remove dir', async () => {
+  const f = file(filePath + '/a');
+  await write(f, 'aaa');
+  await write(filePath + '/b/c', 'bbbccc');
+  const d = dir(filePath);
+  const reader = await f.createReader();
+  expect((await d.children()).length).toBe(2);
+  await d.remove();
+  expect((await d.children()).length).toBe(1);
+
+  await reader.close();
+  await d.remove();
+  expect(await d.exists()).toBe(false);
+});
