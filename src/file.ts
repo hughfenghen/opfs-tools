@@ -1,4 +1,8 @@
-import { OPFSWorkerAccessHandle, createOPFSAccess } from './access-worker';
+import {
+  OPFSWorkerAccessHandle,
+  OpenMode,
+  createOPFSAccess,
+} from './access-worker';
 import { getFSHandle, joinPath, parsePath, remove } from './common';
 import { OPFSDirWrap, dir } from './directory';
 
@@ -6,11 +10,14 @@ const fileCache = new Map<string, OPFSFileWrap>();
 /**
  * Retrieves a file wrapper instance for the specified file path.
  * @param {string} filePath - The path of the file.
+ * @param {'r' | 'rw' | 'rw-unsafe'} mode - A string specifying the locking mode for the access handle. The default value is "rw"
  * return A file wrapper instance.
+ * 
+ * @see [MDN createSyncAccessHandle](https://developer.mozilla.org/en-US/docs/Web/API/FileSystemFileHandle/createSyncAccessHandle)
  * 
  * @example
  * // Read content from a file
-  const fileContent = await file('/path/to/file.txt').text();
+  const fileContent = await file('/path/to/file.txt', 'r').text();
   console.log('File content:', fileContent);
 
   // Check if a file exists
@@ -20,10 +27,13 @@ const fileCache = new Map<string, OPFSFileWrap>();
   // Remove a file
   await file('/path/to/file.txt').remove();
  */
-export function file(filePath: string) {
-  const f = fileCache.get(filePath) ?? new OPFSFileWrap(filePath);
-  fileCache.set(filePath, f);
-  return f;
+export function file(filePath: string, mode: ShortOpenMode = 'rw') {
+  if (mode === 'rw') {
+    const f = fileCache.get(filePath) ?? new OPFSFileWrap(filePath, mode);
+    fileCache.set(filePath, f);
+    return f;
+  }
+  return new OPFSFileWrap(filePath, mode);
 }
 
 /**
@@ -48,7 +58,7 @@ export async function write(
 
   const writer = await (target instanceof OPFSFileWrap
     ? target
-    : file(target)
+    : file(target, 'rw')
   ).createWriter();
   try {
     if (opts.overwrite) await writer.truncate(0);
@@ -68,6 +78,11 @@ export async function write(
     await writer.close();
   }
 }
+
+let FILE_ID = 0;
+const genFileId = () => ++FILE_ID;
+
+type ShortOpenMode = 'r' | 'rw' | 'rw-unsafe';
 
 /**
  * Represents a wrapper for interacting with a file in the filesystem.
@@ -92,9 +107,19 @@ export class OPFSFileWrap {
   #path: string;
   #parentPath: string | null;
   #name: string;
+  #mode: OpenMode;
 
-  constructor(filePath: string) {
+  #id: number;
+  constructor(filePath: string, mode: ShortOpenMode) {
+    this.#id = genFileId();
     this.#path = filePath;
+    this.#mode = (
+      {
+        r: 'read-only',
+        rw: 'readwrite',
+        'rw-unsafe': 'readwrite-unsafe',
+      } as const
+    )[mode];
     const { parent, name } = parsePath(filePath);
     this.#name = name;
     this.#parentPath = parent;
@@ -112,7 +137,11 @@ export class OPFSFileWrap {
 
       return (accPromise = new Promise(async (resolve, reject) => {
         try {
-          const accHandle = await createOPFSAccess(this.#path);
+          const accHandle = await createOPFSAccess(
+            this.#id,
+            this.#path,
+            this.#mode
+          );
           resolve([
             accHandle,
             async () => {
@@ -135,6 +164,7 @@ export class OPFSFileWrap {
    * Random write to file
    */
   async createWriter() {
+    if (this.#mode === 'read-only') throw Error('file is read-only');
     if (this.#writing) throw Error('Other writer have not been closed');
     this.#writing = true;
 

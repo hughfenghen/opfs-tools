@@ -68,12 +68,6 @@ export async function delMarkFiles() {
   localStorage.setItem(opfsToolsExpires, markStr.replace(/,{2,}/g, ','));
 }
 
-declare global {
-  module globalThis {
-    var __opfs_tools_tmpfile_init__: boolean;
-  }
-}
-
 (async function init() {
   if (globalThis.__opfs_tools_tmpfile_init__ === true) return;
   globalThis.__opfs_tools_tmpfile_init__ = true;

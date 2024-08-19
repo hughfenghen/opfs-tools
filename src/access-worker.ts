@@ -10,15 +10,19 @@ export type OPFSWorkerAccessHandle = {
   flush: FileSystemSyncAccessHandle['flush'];
 };
 
+export type OpenMode = 'read-only' | 'readwrite' | 'readwrite-unsafe';
+
 export async function createOPFSAccess(
-  filePath: string
+  fileId: number,
+  filePath: string,
+  mode: OpenMode
 ): Promise<OPFSWorkerAccessHandle> {
   const postMsg = getWorkerMsger();
-  await postMsg('register', { filePath });
+  await postMsg('register', { fileId, filePath, mode });
   return {
     read: async (offset, size) =>
       (await postMsg('read', {
-        filePath,
+        fileId,
         offset,
         size,
       })) as ArrayBuffer,
@@ -26,7 +30,7 @@ export async function createOPFSAccess(
       (await postMsg(
         'write',
         {
-          filePath,
+          fileId,
           data,
           opts,
         },
@@ -34,20 +38,20 @@ export async function createOPFSAccess(
       )) as number,
     close: async () =>
       (await postMsg('close', {
-        filePath,
+        fileId,
       })) as void,
     truncate: async (newSize: number) =>
       (await postMsg('truncate', {
-        filePath,
+        fileId,
         newSize,
       })) as void,
     getSize: async () =>
       (await postMsg('getSize', {
-        filePath,
+        fileId,
       })) as number,
     flush: async () =>
       (await postMsg('flush', {
-        filePath,
+        fileId,
       })) as void,
   };
 }

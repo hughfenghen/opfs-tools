@@ -209,3 +209,33 @@ test('close reader twice', async () => {
   await reader.close();
   await reader.close();
 });
+
+test('multiple handler for single file', async () => {
+  const rwFile = file(filePath, 'rw');
+  const readOnlyFile1 = file(filePath, 'r');
+  const readOnlyFile2 = file(filePath, 'r');
+
+  await write(rwFile, '111');
+
+  expect(readOnlyFile1).not.toBe(readOnlyFile2);
+  expect(await readOnlyFile1.text()).toBe('111');
+  expect(await readOnlyFile2.text()).toBe('111');
+});
+
+test('read-only file dont write', async () => {
+  expect(async () => {
+    await write(file(filePath, 'r'), '111');
+  }).rejects.toThrowError('file is read-only');
+});
+
+test('unsafe write same file', async () => {
+  const f1 = file(filePath, 'rw-unsafe');
+  const f2 = file(filePath, 'rw-unsafe');
+  expect(f1.path).toBe(f2.path);
+  expect(f1).not.toBe(f2);
+
+  await write(f1, '111');
+  await write(f1, '222');
+
+  expect(await f2.text()).toBe('222');
+});
