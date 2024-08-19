@@ -5,7 +5,6 @@ const fileAccesserMap: Record<number, FileSystemSyncAccessHandle> = {};
 self.onmessage = async (e) => {
   const { evtType, args } = e.data;
 
-  console.log(111111, args.fileId);
   let accessHandle = fileAccesserMap[args.fileId as number];
 
   try {
