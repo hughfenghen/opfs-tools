@@ -1,5 +1,11 @@
 # opfs-tools
 
+## 0.6.0
+
+### Minor Changes
+
+- 0286d4d: feat: support open mode for file
+
 ## 0.5.9
 
 ### Patch Changes
