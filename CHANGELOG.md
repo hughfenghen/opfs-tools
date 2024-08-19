@@ -1,5 +1,11 @@
 # opfs-tools
 
+## 0.6.1
+
+### Patch Changes
+
+- cd8aa04: chore: remove debug code
+
 ## 0.6.0
 
 ### Minor Changes
