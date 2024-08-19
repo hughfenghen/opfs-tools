@@ -13,11 +13,14 @@ import { OPFSDirWrap, dir } from './directory';
 /**
  * Retrieves a file wrapper instance for the specified file path.
  * @param {string} filePath - The path of the file.
+ * @param {'r' | 'rw' | 'rw-unsafe'} mode - A string specifying the locking mode for the access handle. The default value is "rw"
  * return A file wrapper instance.
+ *
+ * @see [MDN createSyncAccessHandle](https://developer.mozilla.org/en-US/docs/Web/API/FileSystemFileHandle/createSyncAccessHandle)
  *
  * @example
  * // Read content from a file
-  const fileContent = await file('/path/to/file.txt').text();
+  const fileContent = await file('/path/to/file.txt', 'r').text();
   console.log('File content:', fileContent);
 
   // Check if a file exists
@@ -27,7 +30,10 @@ import { OPFSDirWrap, dir } from './directory';
   // Remove a file
   await file('/path/to/file.txt').remove();
  */
-export declare function file(filePath: string): OPFSFileWrap;
+export declare function file(
+  filePath: string,
+  mode?: ShortOpenMode
+): OPFSFileWrap;
 /**
  * Writes content to the specified file.
  * @param {string} target - The path of the file.
@@ -45,6 +51,7 @@ export declare function write(
     overwrite: boolean;
   }
 ): Promise<void>;
+type ShortOpenMode = 'r' | 'rw' | 'rw-unsafe';
 /**
  * Represents a wrapper for interacting with a file in the filesystem.
  */
@@ -54,7 +61,7 @@ export declare class OPFSFileWrap {
   get path(): string;
   get name(): string;
   get parent(): ReturnType<typeof dir> | null;
-  constructor(filePath: string);
+  constructor(filePath: string, mode: ShortOpenMode);
   /**
    * Random write to file
    */

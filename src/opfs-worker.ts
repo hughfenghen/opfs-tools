@@ -1,11 +1,12 @@
 import { FileSystemSyncAccessHandle, getFSHandle } from './common';
 
-const fileAccesserMap: Record<string, FileSystemSyncAccessHandle> = {};
+const fileAccesserMap: Record<number, FileSystemSyncAccessHandle> = {};
 
 self.onmessage = async (e) => {
   const { evtType, args } = e.data;
 
-  let accessHandle = fileAccesserMap[args.filePath];
+  console.log(111111, args.fileId);
+  let accessHandle = fileAccesserMap[args.fileId as number];
 
   try {
     let returnVal;
@@ -15,13 +16,13 @@ self.onmessage = async (e) => {
         create: true,
         isFile: true,
       });
-      if (fh == null) throw Error(`not found file: ${args.filePath}`);
+      if (fh == null) throw Error(`not found file: ${args.fileId}`);
       // @ts-expect-error
-      accessHandle = await fh.createSyncAccessHandle();
-      fileAccesserMap[args.filePath] = accessHandle;
+      accessHandle = await fh.createSyncAccessHandle({ mode: args.mode });
+      fileAccesserMap[args.fileId] = accessHandle;
     } else if (evtType === 'close') {
       await accessHandle.close();
-      delete fileAccesserMap[args.filePath];
+      delete fileAccesserMap[args.fileId];
     } else if (evtType === 'truncate') {
       await accessHandle.truncate(args.newSize);
     } else if (evtType === 'write') {
