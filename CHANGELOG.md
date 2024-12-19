@@ -1,5 +1,11 @@
 # opfs-tools
 
+## 0.6.2
+
+### Patch Changes
+
+- 1186860: refactor: improve error handling in copyTo method
+
 ## 0.6.1
 
 ### Patch Changes
