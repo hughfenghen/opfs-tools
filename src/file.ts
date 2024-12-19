@@ -287,16 +287,15 @@ export class OPFSFileWrap {
    * if the target is a folder, copy the current file into that folder.
    */
   async copyTo(target: OPFSDirWrap | OPFSFileWrap): Promise<OPFSFileWrap> {
-    if (!(await this.exists())) {
-      throw Error(`file ${this.path} not exists`);
-    }
-
     if (target instanceof OPFSFileWrap) {
-      if (file(target.path) === this) return this;
+      if (target.path === this.path) return this;
 
       await write(target.path, this);
       return file(target.path);
     } else if (target instanceof OPFSDirWrap) {
+      if (!(await this.exists())) {
+        throw Error(`file ${this.path} not exists`);
+      }
       return await this.copyTo(file(joinPath(target.path, this.name)));
     }
     throw Error('Illegal target type');
