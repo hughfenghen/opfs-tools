@@ -105,7 +105,7 @@ export class OPFSFileWrap {
   }
 
   #path: string;
-  #parentPath: string | null;
+  #parentPath: string;
   #name: string;
   #mode: OpenMode;
 
@@ -121,6 +121,7 @@ export class OPFSFileWrap {
       } as const
     )[mode];
     const { parent, name } = parsePath(filePath);
+    if (parent == null) throw Error('Invalid path');
     this.#name = name;
     this.#parentPath = parent;
   }
