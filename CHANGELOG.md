@@ -1,5 +1,11 @@
 # opfs-tools
 
+## 0.7.0
+
+### Minor Changes
+
+- 1b0844e: feat: support copy file/dir to FileSystemFileHandle/FileSystemDirectoryHandle, remove return type for 'copyTo' and 'moveTo' [BREAKING]
+
 ## 0.6.2
 
 ### Patch Changes
