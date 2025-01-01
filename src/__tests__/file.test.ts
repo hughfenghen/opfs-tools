@@ -167,9 +167,10 @@ test('file exists', async () => {
 
 test('move file', async () => {
   await write(filePath, 'foo');
-  const target = await file(filePath).moveTo(dir('/'));
+  const root = dir('/');
+  await file(filePath).moveTo(root);
   expect(await file(filePath).exists()).toBe(false);
-  await target.remove();
+  await root.remove();
 });
 
 test('move file, current file not exists', async () => {
@@ -181,25 +182,37 @@ test('move file, current file not exists', async () => {
 test('copy file to dir', async () => {
   await write(filePath, 'foo');
   const oldFile = file(filePath);
-  const copyed = await oldFile.copyTo(dir('/'));
-  expect(copyed.path).toBe(`/${oldFile.name}`);
+  const root = dir('/');
+  await oldFile.copyTo(root);
+  const newFile = file(`/${oldFile.name}`);
+  expect(await newFile.exists()).toBe(true);
   expect(await oldFile.exists()).toBe(true);
 
-  await copyed.remove();
+  await newFile.remove();
 });
 
 test('copy file to another file', async () => {
   await write(filePath, 'foo');
   const oldFile = file(filePath);
-  let copyed = await oldFile.copyTo(file(filePath));
-  // selft
-  expect(copyed === oldFile).toBe(true);
 
-  copyed = await oldFile.copyTo(file('/abc'));
-  expect(copyed.path).toBe('/abc');
-  expect(await copyed.text()).toBe('foo');
+  const newFile = file('/abc');
+  await oldFile.copyTo(newFile);
+  expect(newFile.path).toBe('/abc');
+  expect(await newFile.text()).toBe('foo');
 
   await file('/abc').remove();
+});
+
+test('copy to file handle', async () => {
+  await write(filePath, 'foo');
+  const oldFile = file(filePath);
+  const newFileHandle = await (
+    await navigator.storage.getDirectory()
+  ).getFileHandle('bar', { create: true });
+
+  await oldFile.copyTo(newFileHandle);
+  expect(await (await newFileHandle.getFile()).text()).toBe('foo');
+  await file('/bar').remove();
 });
 
 test('close reader twice', async () => {

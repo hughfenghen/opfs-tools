@@ -1,6 +1,7 @@
 import { afterEach, expect, test } from 'vitest';
 import { dir } from '../directory';
 import { file, write } from '../file';
+import { joinPath } from '../common';
 
 const filePath = '/unit-test/dir';
 
@@ -73,4 +74,18 @@ test('remove dir', async () => {
   await reader.close();
   await d.remove();
   expect(await d.exists()).toBe(false);
+});
+
+test('copy to dir handle', async () => {
+  const d = dir(filePath);
+  await write(joinPath(filePath, 'a'), 'aaa');
+  const dirHandle = await (
+    await navigator.storage.getDirectory()
+  ).getDirectoryHandle('abc', { create: true });
+  await d.copyTo(dirHandle);
+
+  expect(
+    await (await (await dirHandle.getFileHandle('a')).getFile()).text()
+  ).toBe('aaa');
+  await dir('/abc').remove();
 });

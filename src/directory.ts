@@ -125,26 +125,44 @@ export class OPFSDirWrap {
    * If the dest folder exists, copy the current directory into the dest folder;
    * if the dest folder does not exist, rename the current directory to dest name.
    */
-  async copyTo(dest: OPFSDirWrap) {
+  async copyTo(dest: OPFSDirWrap | FileSystemDirectoryHandle) {
     if (!(await this.exists())) {
       throw Error(`dir ${this.path} not exists`);
     }
-    const newDir = (await dest.exists())
-      ? dir(joinPath(dest.path, this.name))
-      : dest;
-    await newDir.create();
-    await Promise.all((await this.children()).map((it) => it.copyTo(newDir)));
 
-    return newDir;
+    if (dest instanceof OPFSDirWrap) {
+      const newDir = (await dest.exists())
+        ? dir(joinPath(dest.path, this.name))
+        : dest;
+      await newDir.create();
+      await Promise.all((await this.children()).map((it) => it.copyTo(newDir)));
+      return;
+    } else if (dest instanceof FileSystemDirectoryHandle) {
+      await Promise.all(
+        (
+          await this.children()
+        ).map(async (it) => {
+          if (it.kind === 'file') {
+            await it.copyTo(
+              await dest.getFileHandle(it.name, { create: true })
+            );
+          } else {
+            await it.copyTo(
+              await dest.getDirectoryHandle(it.name, { create: true })
+            );
+          }
+        })
+      );
+      return;
+    }
+    throw Error('Illegal target type');
   }
 
   /**
    * move directory, copy then remove current
    */
-  async moveTo(dest: OPFSDirWrap): Promise<OPFSDirWrap> {
-    const newDir = await this.copyTo(dest);
+  async moveTo(dest: OPFSDirWrap): Promise<void> {
+    await this.copyTo(dest);
     await this.remove();
-
-    return newDir;
   }
 }

@@ -287,17 +287,22 @@ export class OPFSFileWrap {
    * If the target is a file, use current overwrite the target;
    * if the target is a folder, copy the current file into that folder.
    */
-  async copyTo(target: OPFSDirWrap | OPFSFileWrap): Promise<OPFSFileWrap> {
+  async copyTo(
+    target: OPFSDirWrap | OPFSFileWrap | FileSystemFileHandle
+  ): Promise<void> {
     if (target instanceof OPFSFileWrap) {
-      if (target.path === this.path) return this;
+      if (target.path === this.path) return;
 
       await write(target.path, this);
-      return file(target.path);
+      return;
     } else if (target instanceof OPFSDirWrap) {
       if (!(await this.exists())) {
         throw Error(`file ${this.path} not exists`);
       }
       return await this.copyTo(file(joinPath(target.path, this.name)));
+    } else if (target instanceof FileSystemFileHandle) {
+      await (await this.stream()).pipeTo(await target.createWritable());
+      return;
     }
     throw Error('Illegal target type');
   }
@@ -305,9 +310,8 @@ export class OPFSFileWrap {
   /**
    * move file, copy then remove current
    */
-  async moveTo(target: OPFSDirWrap | OPFSFileWrap): Promise<OPFSFileWrap> {
-    const newFile = await this.copyTo(target);
+  async moveTo(target: OPFSDirWrap | OPFSFileWrap): Promise<void> {
+    await this.copyTo(target);
     await this.remove();
-    return newFile;
   }
 }
