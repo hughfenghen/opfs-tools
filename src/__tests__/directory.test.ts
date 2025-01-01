@@ -35,7 +35,8 @@ test('move dir, dest not exists', async () => {
   expect(await file(filePath + '/b/c').text()).toBe('ccc');
 
   await dir('/.Trush').remove();
-  const trushDir = await dir(filePath).moveTo(dir('/.Trush'));
+  const trushDir = dir('/.Trush');
+  await dir(filePath).moveTo(trushDir);
 
   expect(await dir('/.Trush/b').exists()).toBe(true);
   expect(await file('/.Trush/a').text()).toBe('aaa');
