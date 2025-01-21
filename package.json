@@ -32,7 +32,7 @@
     "build": "vite build && tsc -p tsconfig.build.json && node build/gen-api.js",
     "build:watch": "tsc -p tsconfig.build.json && vite build --watch --emptyOutDir false",
     "build:demo": "vite build --config vite.demo-config.ts",
-    "prepublishOnly": "yarn build",
+    "prepublishOnly": "pnpm build",
     "preview": "vite preview"
   },
   "files": [
