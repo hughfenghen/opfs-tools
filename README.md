@@ -2,14 +2,9 @@ EN: A simple, high-performance, and comprehensive file system API running in the
 
 CN: 在浏览器中运行的简单、高性能、完备的文件系统 API，基于 [OPFS](https://developer.mozilla.org/en-US/docs/Web/API/File_System_API/Origin_private_file_system) 构建。
 
-[**API Documentation**](./docs/api.md)
-
-[Benchmark](https://hughfenghen.github.io/opfs-tools/demo/benchmark.html)
+[**API Documentation**](./docs/api.md) | [Benchmark](https://hughfenghen.github.io/opfs-tools/demo/benchmark.html)
 
 ## Usage
-
-_You can experience the [online demo](https://hughfenghen.github.io/opfs-tools-explorer/) at the [opfs-tools-explorer](https://github.com/hughfenghen/opfs-tools-explorer) project._  
-![image](https://github.com/hughfenghen/opfs-tools/assets/3307051/1cf11bc7-92fb-4fde-9a18-5c7e81419e77)
 
 ```js
 import { file, dir, write } from 'opfs-tools';
@@ -69,8 +64,12 @@ await fetch('/upload', {
 
 - [**opfs-finder**](https://github.com/hughfenghen/opfs-finder)  
   使用 AI + OPFS 在浏览器中实现 MacOS Finder。Implement MacOS Finder in the browser using AI + OPFS.
+  <image src="https://github.com/user-attachments/assets/9daa5739-7561-425f-abb2-dcd5a5af519a" width="700">
+
 - [**opfs-tools-explorer**](https://github.com/hughfenghen/opfs-tools-explorer)  
-  Manage OPFS assets in your web site, supporting file creation, copying, and moving features, providing a user-friendly interactive experience.
+  Manage OPFS assets in your web site, supporting file creation, copying, and moving features, providing a user-friendly interactive experience.  
+  ![image](https://github.com/hughfenghen/opfs-tools/assets/3307051/1cf11bc7-92fb-4fde-9a18-5c7e81419e77)
+
 
 ## Features
 
