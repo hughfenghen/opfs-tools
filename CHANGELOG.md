@@ -1,5 +1,12 @@
 # opfs-tools
 
+## 0.7.1
+
+### Patch Changes
+
+- 04baa2f: refactor: rename #8
+- a329490: chore: export type OTFile and OTDir
+
 ## 0.7.0
 
 ### Minor Changes
