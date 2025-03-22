@@ -9,12 +9,12 @@ import { file, write, dir } from 'opfs-tools';
 ## file
 
 ```ts
-import { OPFSDirWrap, dir } from './directory';
+import { OTDir, dir } from './directory';
 /**
  * Retrieves a file wrapper instance for the specified file path.
  * @param {string} filePath - The path of the file.
  * @param {'r' | 'rw' | 'rw-unsafe'} mode - A string specifying the locking mode for the access handle. The default value is "rw"
- * return A file wrapper instance.
+ * return A OTFile instance.
  *
  * @see [MDN createSyncAccessHandle](https://developer.mozilla.org/en-US/docs/Web/API/FileSystemFileHandle/createSyncAccessHandle)
  *
@@ -30,10 +30,7 @@ import { OPFSDirWrap, dir } from './directory';
   // Remove a file
   await file('/path/to/file.txt').remove();
  */
-export declare function file(
-  filePath: string,
-  mode?: ShortOpenMode
-): OPFSFileWrap;
+export declare function file(filePath: string, mode?: ShortOpenMode): OTFile;
 /**
  * Writes content to the specified file.
  * @param {string} target - The path of the file.
@@ -45,8 +42,8 @@ export declare function file(
    await write('/path/to/file.txt', 'Hello, world!');
  */
 export declare function write(
-  target: string | OPFSFileWrap,
-  content: string | BufferSource | ReadableStream<BufferSource> | OPFSFileWrap,
+  target: string | OTFile,
+  content: string | BufferSource | ReadableStream<BufferSource> | OTFile,
   opts?: {
     overwrite: boolean;
   }
@@ -55,7 +52,7 @@ type ShortOpenMode = 'r' | 'rw' | 'rw-unsafe';
 /**
  * Represents a wrapper for interacting with a file in the filesystem.
  */
-export declare class OPFSFileWrap {
+export declare class OTFile {
   #private;
   get kind(): 'file';
   get path(): string;
@@ -100,18 +97,18 @@ export declare class OPFSFileWrap {
    * If the target is a file, use current overwrite the target;
    * if the target is a folder, copy the current file into that folder.
    */
-  copyTo(target: OPFSDirWrap | OPFSFileWrap): Promise<OPFSFileWrap>;
+  copyTo(target: OTDir | OTFile | FileSystemFileHandle): Promise<void>;
   /**
    * move file, copy then remove current
    */
-  moveTo(target: OPFSDirWrap | OPFSFileWrap): Promise<OPFSFileWrap>;
+  moveTo(target: OTDir | OTFile): Promise<void>;
 }
 ```
 
 ## directory
 
 ```ts
-import { OPFSFileWrap } from './file';
+import { OTFile } from './file';
 declare global {
   interface FileSystemDirectoryHandle {
     keys: () => AsyncIterable<string>;
@@ -137,19 +134,19 @@ declare global {
   // Retrieve children of the directory
   const children = await dir('/path/to/parent_directory').children();
  */
-export declare function dir(dirPath: string): OPFSDirWrap;
-export declare class OPFSDirWrap {
+export declare function dir(dirPath: string): OTDir;
+export declare class OTDir {
   #private;
   get kind(): 'dir';
   get name(): string;
   get path(): string;
-  get parent(): OPFSDirWrap | null;
+  get parent(): OTDir | null;
   constructor(dirPath: string);
   /**
    * Creates the directory.
    * return A promise that resolves when the directory is created.
    */
-  create(): Promise<OPFSDirWrap>;
+  create(): Promise<OTDir>;
   /**
    * Checks if the directory exists.
    * return A promise that resolves to true if the directory exists, otherwise false.
@@ -164,26 +161,26 @@ export declare class OPFSDirWrap {
    * Retrieves the children of the directory.
    * return A promise that resolves to an array of objects representing the children.
    */
-  children(): Promise<Array<OPFSDirWrap | OPFSFileWrap>>;
+  children(): Promise<Array<OTDir | OTFile>>;
   /**
    * If the dest folder exists, copy the current directory into the dest folder;
    * if the dest folder does not exist, rename the current directory to dest name.
    */
-  copyTo(dest: OPFSDirWrap): Promise<OPFSDirWrap>;
+  copyTo(dest: OTDir | FileSystemDirectoryHandle): Promise<void>;
   /**
    * move directory, copy then remove current
    */
-  moveTo(dest: OPFSDirWrap): Promise<OPFSDirWrap>;
+  moveTo(dest: OTDir): Promise<void>;
 }
 ```
 
 ## tmpfile
 
 ```ts
-import { OPFSFileWrap } from './file';
+import { OTFile } from './file';
 /**
  * Create a temporary file that will automatically be cleared to avoid occupying too much storage space.
  * The temporary file name will be automatically generated and stored in a specific directory.
  */
-export declare function tmpfile(): OPFSFileWrap;
+export declare function tmpfile(): OTFile;
 ```

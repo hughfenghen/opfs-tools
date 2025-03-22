@@ -1,9 +1,9 @@
-import { OPFSDirWrap, dir } from './directory';
-import { OPFSFileWrap, file } from './file';
+import { OTDir, dir } from './directory';
+import { OTFile, file } from './file';
 
 const TMP_DIR = '/.opfs-tools-temp-dir';
 
-async function safeRemove(it: OPFSFileWrap | OPFSDirWrap) {
+async function safeRemove(it: OTFile | OTDir) {
   try {
     if (it.kind === 'file') {
       if (!(await it.exists())) return true;

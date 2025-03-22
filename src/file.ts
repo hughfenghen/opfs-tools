@@ -4,14 +4,14 @@ import {
   createOPFSAccess,
 } from './access-worker';
 import { getFSHandle, joinPath, parsePath, remove } from './common';
-import { OPFSDirWrap, dir } from './directory';
+import { OTDir, dir } from './directory';
 
-const fileCache = new Map<string, OPFSFileWrap>();
+const fileCache = new Map<string, OTFile>();
 /**
  * Retrieves a file wrapper instance for the specified file path.
  * @param {string} filePath - The path of the file.
  * @param {'r' | 'rw' | 'rw-unsafe'} mode - A string specifying the locking mode for the access handle. The default value is "rw"
- * return A file wrapper instance.
+ * return A OTFile instance.
  * 
  * @see [MDN createSyncAccessHandle](https://developer.mozilla.org/en-US/docs/Web/API/FileSystemFileHandle/createSyncAccessHandle)
  * 
@@ -29,11 +29,11 @@ const fileCache = new Map<string, OPFSFileWrap>();
  */
 export function file(filePath: string, mode: ShortOpenMode = 'rw') {
   if (mode === 'rw') {
-    const f = fileCache.get(filePath) ?? new OPFSFileWrap(filePath, mode);
+    const f = fileCache.get(filePath) ?? new OTFile(filePath, mode);
     fileCache.set(filePath, f);
     return f;
   }
-  return new OPFSFileWrap(filePath, mode);
+  return new OTFile(filePath, mode);
 }
 
 /**
@@ -47,16 +47,16 @@ export function file(filePath: string, mode: ShortOpenMode = 'rw') {
    await write('/path/to/file.txt', 'Hello, world!');
  */
 export async function write(
-  target: string | OPFSFileWrap,
-  content: string | BufferSource | ReadableStream<BufferSource> | OPFSFileWrap,
+  target: string | OTFile,
+  content: string | BufferSource | ReadableStream<BufferSource> | OTFile,
   opts = { overwrite: true }
 ) {
-  if (content instanceof OPFSFileWrap) {
+  if (content instanceof OTFile) {
     await write(target, await content.stream(), opts);
     return;
   }
 
-  const writer = await (target instanceof OPFSFileWrap
+  const writer = await (target instanceof OTFile
     ? target
     : file(target, 'rw')
   ).createWriter();
@@ -87,7 +87,7 @@ type ShortOpenMode = 'r' | 'rw' | 'rw-unsafe';
 /**
  * Represents a wrapper for interacting with a file in the filesystem.
  */
-export class OPFSFileWrap {
+export class OTFile {
   get kind(): 'file' {
     return 'file';
   }
@@ -287,15 +287,13 @@ export class OPFSFileWrap {
    * If the target is a file, use current overwrite the target;
    * if the target is a folder, copy the current file into that folder.
    */
-  async copyTo(
-    target: OPFSDirWrap | OPFSFileWrap | FileSystemFileHandle
-  ): Promise<void> {
-    if (target instanceof OPFSFileWrap) {
+  async copyTo(target: OTDir | OTFile | FileSystemFileHandle): Promise<void> {
+    if (target instanceof OTFile) {
       if (target.path === this.path) return;
 
       await write(target.path, this);
       return;
-    } else if (target instanceof OPFSDirWrap) {
+    } else if (target instanceof OTDir) {
       if (!(await this.exists())) {
         throw Error(`file ${this.path} not exists`);
       }
@@ -310,7 +308,7 @@ export class OPFSFileWrap {
   /**
    * move file, copy then remove current
    */
-  async moveTo(target: OPFSDirWrap | OPFSFileWrap): Promise<void> {
+  async moveTo(target: OTDir | OTFile): Promise<void> {
     await this.copyTo(target);
     await this.remove();
   }

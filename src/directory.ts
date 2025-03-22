@@ -1,5 +1,5 @@
 import { getFSHandle, joinPath, parsePath, remove } from './common';
-import { file, OPFSFileWrap } from './file';
+import { file, OTFile } from './file';
 
 declare global {
   interface FileSystemDirectoryHandle {
@@ -28,10 +28,10 @@ declare global {
   const children = await dir('/path/to/parent_directory').children();
  */
 export function dir(dirPath: string) {
-  return new OPFSDirWrap(dirPath);
+  return new OTDir(dirPath);
 }
 
-export class OPFSDirWrap {
+export class OTDir {
   get kind(): 'dir' {
     return 'dir';
   }
@@ -44,7 +44,7 @@ export class OPFSDirWrap {
     return this.#path;
   }
 
-  get parent(): OPFSDirWrap | null {
+  get parent(): OTDir | null {
     return this.#parentPath == null ? null : dir(this.#parentPath);
   }
 
@@ -107,7 +107,7 @@ export class OPFSDirWrap {
    * Retrieves the children of the directory.
    * return A promise that resolves to an array of objects representing the children.
    */
-  async children(): Promise<Array<OPFSDirWrap | OPFSFileWrap>> {
+  async children(): Promise<Array<OTDir | OTFile>> {
     const handle = (await getFSHandle(this.#path, {
       create: false,
       isFile: false,
@@ -125,12 +125,12 @@ export class OPFSDirWrap {
    * If the dest folder exists, copy the current directory into the dest folder;
    * if the dest folder does not exist, rename the current directory to dest name.
    */
-  async copyTo(dest: OPFSDirWrap | FileSystemDirectoryHandle) {
+  async copyTo(dest: OTDir | FileSystemDirectoryHandle) {
     if (!(await this.exists())) {
       throw Error(`dir ${this.path} not exists`);
     }
 
-    if (dest instanceof OPFSDirWrap) {
+    if (dest instanceof OTDir) {
       const newDir = (await dest.exists())
         ? dir(joinPath(dest.path, this.name))
         : dest;
@@ -161,7 +161,7 @@ export class OPFSDirWrap {
   /**
    * move directory, copy then remove current
    */
-  async moveTo(dest: OPFSDirWrap): Promise<void> {
+  async moveTo(dest: OTDir): Promise<void> {
     await this.copyTo(dest);
     await this.remove();
   }
