@@ -4,6 +4,7 @@ The "opfs-tools" library provides three entry functions: "file," "write," and "d
 
 ```ts
 import { file, write, dir } from 'opfs-tools';
+import type { OTFile, OTDir } from 'opfs-tools';
 ```
 
 ## file
