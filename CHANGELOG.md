@@ -1,5 +1,11 @@
 # opfs-tools
 
+## 0.7.2
+
+### Patch Changes
+
+- 1bea9e0: refactor: minimizing the impact of breaking changes in version 0.7.0
+
 ## 0.7.1
 
 ### Patch Changes
