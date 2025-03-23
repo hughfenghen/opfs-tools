@@ -81,7 +81,12 @@ export async function remove(path: string) {
   })) as FileSystemDirectoryHandle | null;
   if (dirHandle == null) return;
 
-  await dirHandle.removeEntry(name, { recursive: true });
+  try {
+    await dirHandle.removeEntry(name, { recursive: true });
+  } catch (err) {
+    if ((err as Error).name === 'NotFoundError') return;
+    throw err;
+  }
 }
 
 export function joinPath(p1: string, p2: string) {
