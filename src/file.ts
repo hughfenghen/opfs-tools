@@ -287,12 +287,14 @@ export class OTFile {
    * If the target is a file, use current overwrite the target;
    * if the target is a folder, copy the current file into that folder.
    */
-  async copyTo(target: OTDir | OTFile | FileSystemFileHandle): Promise<void> {
+  async copyTo(target: OTDir | OTFile): Promise<OTFile>;
+  async copyTo(target: FileSystemFileHandle): Promise<null>;
+  async copyTo<T>(target: T) {
     if (target instanceof OTFile) {
-      if (target.path === this.path) return;
+      if (target.path === this.path) return this;
 
       await write(target.path, this);
-      return;
+      return file(target.path);
     } else if (target instanceof OTDir) {
       if (!(await this.exists())) {
         throw Error(`file ${this.path} not exists`);
@@ -300,7 +302,7 @@ export class OTFile {
       return await this.copyTo(file(joinPath(target.path, this.name)));
     } else if (target instanceof FileSystemFileHandle) {
       await (await this.stream()).pipeTo(await target.createWritable());
-      return;
+      return null;
     }
     throw Error('Illegal target type');
   }
@@ -308,8 +310,9 @@ export class OTFile {
   /**
    * move file, copy then remove current
    */
-  async moveTo(target: OTDir | OTFile): Promise<void> {
-    await this.copyTo(target);
+  async moveTo(target: OTDir | OTFile): Promise<OTFile> {
+    const newFile = await this.copyTo(target);
     await this.remove();
+    return newFile;
   }
 }

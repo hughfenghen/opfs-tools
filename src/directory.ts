@@ -125,7 +125,9 @@ export class OTDir {
    * If the dest folder exists, copy the current directory into the dest folder;
    * if the dest folder does not exist, rename the current directory to dest name.
    */
-  async copyTo(dest: OTDir | FileSystemDirectoryHandle) {
+  async copyTo(dest: OTDir): Promise<OTDir>;
+  async copyTo(dest: FileSystemDirectoryHandle): Promise<null>;
+  async copyTo<T>(dest: T) {
     if (!(await this.exists())) {
       throw Error(`dir ${this.path} not exists`);
     }
@@ -136,7 +138,7 @@ export class OTDir {
         : dest;
       await newDir.create();
       await Promise.all((await this.children()).map((it) => it.copyTo(newDir)));
-      return;
+      return newDir;
     } else if (dest instanceof FileSystemDirectoryHandle) {
       await Promise.all(
         (
@@ -153,7 +155,7 @@ export class OTDir {
           }
         })
       );
-      return;
+      return null;
     }
     throw Error('Illegal target type');
   }
@@ -161,8 +163,9 @@ export class OTDir {
   /**
    * move directory, copy then remove current
    */
-  async moveTo(dest: OTDir): Promise<void> {
-    await this.copyTo(dest);
+  async moveTo(dest: OTDir): Promise<OTDir> {
+    const newDir = await this.copyTo(dest);
     await this.remove();
+    return newDir;
   }
 }
