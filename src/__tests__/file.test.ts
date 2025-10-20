@@ -5,11 +5,11 @@ import { dir } from '../directory';
 const filePath = '/unit-test/file';
 
 beforeEach(async () => {
-  await file(filePath).remove();
+  await file(filePath).remove({ force: true });
 });
 
 afterEach(async () => {
-  await file(filePath).remove();
+  await file(filePath).remove({ force: true });
 });
 
 test('write string to file', async () => {
@@ -251,4 +251,23 @@ test('unsafe write same file', async () => {
   await write(f1, '222');
 
   expect(await f2.text()).toBe('222');
+});
+
+test('remove file when unclos reader', async () => {
+  const f = file(filePath);
+  await write(f, '111');
+  const reader = await f.createReader();
+  expect(async () => {
+    await f.remove();
+  }).rejects.toThrowError('exists unclosed reader/writer');
+  await reader.close();
+  await f.remove();
+});
+
+test('force remove file', async () => {
+  const f = file(filePath);
+  await write(f, '111');
+  await f.createReader();
+  await f.remove({ force: true });
+  expect(await f.exists()).toBe(false);
 });

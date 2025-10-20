@@ -127,6 +127,7 @@ export class OTFile {
   }
 
   #referCnt = 0;
+  #unsafeClose = async () => {};
   #getAccessHandle = (() => {
     let accPromise: Promise<
       [OPFSWorkerAccessHandle, () => Promise<void>]
@@ -143,6 +144,12 @@ export class OTFile {
             this.#path,
             this.#mode
           );
+
+          await this.#unsafeClose();
+          this.#unsafeClose = async () => {
+            await accHandle.close().catch(() => {});
+          };
+
           resolve([
             accHandle,
             async () => {
@@ -277,10 +284,15 @@ export class OTFile {
     );
   }
 
-  async remove() {
-    if (this.#referCnt) throw Error('exists unclosed reader/writer');
+  async remove(opts: { force?: boolean } = {}) {
+    if (opts.force === true) {
+      await this.#unsafeClose();
+      await remove(this.#path);
+      fileCache.delete(this.#path);
+      return;
+    }
+    if (this.#referCnt > 0) throw Error('exists unclosed reader/writer');
     await remove(this.#path);
-    // fileCache.delete(this.#path);
   }
 
   /**

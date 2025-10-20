@@ -90,3 +90,16 @@ test('copy to dir handle', async () => {
   ).toBe('aaa');
   await dir('/abc').remove();
 });
+
+test('force remove dir', async () => {
+  const d = dir(filePath);
+
+  const f = file(filePath + '/a');
+  const writer = await f.createWriter();
+  await writer.write('aaa');
+  expect(await f.exists()).toBe(true);
+
+  await d.remove({ force: true });
+  expect(await f.exists()).toBe(false);
+  expect(await d.exists()).toBe(false);
+});

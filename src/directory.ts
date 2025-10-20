@@ -88,10 +88,10 @@ export class OTDir {
    * Removes the directory.
    * return A promise that resolves when the directory is removed.
    */
-  async remove() {
+  async remove(opts: { force?: boolean } = {}) {
     for (const it of await this.children()) {
       try {
-        await it.remove();
+        await it.remove(opts);
       } catch (err) {
         console.warn(err);
       }
@@ -168,4 +168,8 @@ export class OTDir {
     await this.remove();
     return newDir;
   }
+}
+
+export class UserDir {
+  constructor(handle: FileSystemDirectoryHandle) {}
 }
