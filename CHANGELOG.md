@@ -1,5 +1,11 @@
 # opfs-tools
 
+## 0.7.3
+
+### Patch Changes
+
+- 21a1429: feat: force remove dir/file
+
 ## 0.7.2
 
 ### Patch Changes
