@@ -83,16 +83,19 @@ export declare class OTFile {
     getOriginFile(): Promise<File | undefined>;
     getSize(): Promise<number>;
     exists(): Promise<boolean>;
-    remove(): Promise<void>;
+    remove(opts?: {
+        force?: boolean;
+    }): Promise<void>;
     /**
      * If the target is a file, use current overwrite the target;
      * if the target is a folder, copy the current file into that folder.
      */
-    copyTo(target: OTDir | OTFile | FileSystemFileHandle): Promise<void>;
+    copyTo(target: OTDir | OTFile): Promise<OTFile>;
+    copyTo(target: FileSystemFileHandle): Promise<null>;
     /**
      * move file, copy then remove current
      */
-    moveTo(target: OTDir | OTFile): Promise<void>;
+    moveTo(target: OTDir | OTFile): Promise<OTFile>;
 }
 ```
 
@@ -145,7 +148,9 @@ export declare class OTDir {
      * Removes the directory.
      * return A promise that resolves when the directory is removed.
      */
-    remove(): Promise<void>;
+    remove(opts?: {
+        force?: boolean;
+    }): Promise<void>;
     /**
      * Retrieves the children of the directory.
      * return A promise that resolves to an array of objects representing the children.
@@ -155,11 +160,12 @@ export declare class OTDir {
      * If the dest folder exists, copy the current directory into the dest folder;
      * if the dest folder does not exist, rename the current directory to dest name.
      */
-    copyTo(dest: OTDir | FileSystemDirectoryHandle): Promise<void>;
+    copyTo(dest: OTDir): Promise<OTDir>;
+    copyTo(dest: FileSystemDirectoryHandle): Promise<null>;
     /**
      * move directory, copy then remove current
      */
-    moveTo(dest: OTDir): Promise<void>;
+    moveTo(dest: OTDir): Promise<OTDir>;
 }
 ```
 

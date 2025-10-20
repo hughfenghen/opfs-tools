@@ -169,7 +169,3 @@ export class OTDir {
     return newDir;
   }
 }
-
-export class UserDir {
-  constructor(handle: FileSystemDirectoryHandle) {}
-}
