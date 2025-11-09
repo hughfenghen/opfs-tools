@@ -1,5 +1,11 @@
 # opfs-tools
 
+## 0.7.4
+
+### Patch Changes
+
+- f2915b0: fix: maybe write file failed
+
 ## 0.7.3
 
 ### Patch Changes
