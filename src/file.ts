@@ -137,7 +137,7 @@ export class OTFile {
       this.#referCnt += 1;
       if (accPromise != null) return accPromise;
 
-      return (accPromise = new Promise(async (resolve, reject) => {
+      accPromise = new Promise(async (resolve, reject) => {
         try {
           const accHandle = await createOPFSAccess(
             this.#id,
@@ -145,9 +145,11 @@ export class OTFile {
             this.#mode
           );
 
-          await this.#unsafeClose();
           this.#unsafeClose = async () => {
-            await accHandle.close().catch(() => {});
+            if (accPromise == null) return;
+            accPromise = null;
+            this.#referCnt = 0;
+            await accHandle.close().catch(console.error);
           };
 
           resolve([
@@ -163,7 +165,8 @@ export class OTFile {
         } catch (err) {
           reject(err);
         }
-      }));
+      });
+      return accPromise;
     };
   })();
 
@@ -176,40 +179,46 @@ export class OTFile {
     if (this.#writing) throw Error('Other writer have not been closed');
     this.#writing = true;
 
-    const txtEC = new TextEncoder();
+    try {
+      const txtEC = new TextEncoder();
 
-    // append content by default
-    const [accHandle, unref] = await this.#getAccessHandle();
-    let pos = await accHandle.getSize();
-    let closed = false;
-    return {
-      write: async (
-        chunk: string | BufferSource,
-        opts: { at?: number } = {}
-      ) => {
-        if (closed) throw Error('Writer is closed');
-        const content = typeof chunk === 'string' ? txtEC.encode(chunk) : chunk;
-        const at = opts.at ?? pos;
-        const contentSize = content.byteLength;
-        pos = at + contentSize;
-        return await accHandle.write(content, { at });
-      },
-      truncate: async (size: number) => {
-        if (closed) throw Error('Writer is closed');
-        await accHandle.truncate(size);
-        if (pos > size) pos = size;
-      },
-      flush: async () => {
-        if (closed) throw Error('Writer is closed');
-        await accHandle.flush();
-      },
-      close: async () => {
-        if (closed) throw Error('Writer is closed');
-        closed = true;
-        this.#writing = false;
-        await unref();
-      },
-    };
+      // append content by default
+      const [accHandle, unref] = await this.#getAccessHandle();
+      let pos = await accHandle.getSize();
+      let closed = false;
+      return {
+        write: async (
+          chunk: string | BufferSource,
+          opts: { at?: number } = {}
+        ) => {
+          if (closed) throw Error('Writer is closed');
+          const content =
+            typeof chunk === 'string' ? txtEC.encode(chunk) : chunk;
+          const at = opts.at ?? pos;
+          const contentSize = content.byteLength;
+          pos = at + contentSize;
+          return await accHandle.write(content, { at });
+        },
+        truncate: async (size: number) => {
+          if (closed) throw Error('Writer is closed');
+          await accHandle.truncate(size);
+          if (pos > size) pos = size;
+        },
+        flush: async () => {
+          if (closed) throw Error('Writer is closed');
+          await accHandle.flush();
+        },
+        close: async () => {
+          if (closed) throw Error('Writer is closed');
+          closed = true;
+          this.#writing = false;
+          await unref();
+        },
+      };
+    } catch (err) {
+      this.#writing = false;
+      throw err;
+    }
   }
 
   /**
@@ -305,8 +314,8 @@ export class OTFile {
     if (target instanceof OTFile) {
       if (target.path === this.path) return this;
 
-      await write(target.path, this);
-      return file(target.path);
+      await write(target, this);
+      return target;
     } else if (target instanceof OTDir) {
       if (!(await this.exists())) {
         throw Error(`file ${this.path} not exists`);
