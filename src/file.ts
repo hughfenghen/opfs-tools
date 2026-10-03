@@ -121,7 +121,7 @@ export class OTFile {
       } as const
     )[mode];
     const { parent, name } = parsePath(filePath);
-    if (parent == null) throw Error('Invalid path');
+    if (parent == null) throw Error(`Invalid path: ${filePath}`);
     this.#name = name;
     this.#parentPath = parent;
   }
@@ -175,8 +175,10 @@ export class OTFile {
    * Random write to file
    */
   async createWriter() {
-    if (this.#mode === 'read-only') throw Error('file is read-only');
-    if (this.#writing) throw Error('Other writer have not been closed');
+    if (this.#mode === 'read-only')
+      throw Error(`file is read-only: ${this.#path}`);
+    if (this.#writing)
+      throw Error(`Other writer have not been closed: ${this.#path}`);
     this.#writing = true;
 
     try {
@@ -191,7 +193,7 @@ export class OTFile {
           chunk: string | BufferSource,
           opts: { at?: number } = {}
         ) => {
-          if (closed) throw Error('Writer is closed');
+          if (closed) throw Error(`Writer is closed: ${this.#path}`);
           const content =
             typeof chunk === 'string' ? txtEC.encode(chunk) : chunk;
           const at = opts.at ?? pos;
@@ -200,16 +202,16 @@ export class OTFile {
           return await accHandle.write(content, { at });
         },
         truncate: async (size: number) => {
-          if (closed) throw Error('Writer is closed');
+          if (closed) throw Error(`Writer is closed: ${this.#path}`);
           await accHandle.truncate(size);
           if (pos > size) pos = size;
         },
         flush: async () => {
-          if (closed) throw Error('Writer is closed');
+          if (closed) throw Error(`Writer is closed: ${this.#path}`);
           await accHandle.flush();
         },
         close: async () => {
-          if (closed) throw Error('Writer is closed');
+          if (closed) throw Error(`Writer is closed: ${this.#path}`);
           closed = true;
           this.#writing = false;
           await unref();
@@ -231,14 +233,14 @@ export class OTFile {
     let pos = 0;
     return {
       read: async (size: number, opts: { at?: number } = {}) => {
-        if (closed) throw Error('Reader is closed');
+        if (closed) throw Error(`Reader is closed: ${this.#path}`);
         const offset = opts.at ?? pos;
         const buf = await accHandle.read(offset, size);
         pos = offset + buf.byteLength;
         return buf;
       },
       getSize: async () => {
-        if (closed) throw Error('Reader is closed');
+        if (closed) throw Error(`Reader is closed: ${this.#path}`);
         return await accHandle.getSize();
       },
       close: async () => {
@@ -300,7 +302,8 @@ export class OTFile {
       fileCache.delete(this.#path);
       return;
     }
-    if (this.#referCnt > 0) throw Error('exists unclosed reader/writer');
+    if (this.#referCnt > 0)
+      throw Error(`exists unclosed reader/writer: ${this.#path}`);
     await remove(this.#path);
   }
 
@@ -325,7 +328,7 @@ export class OTFile {
       await (await this.stream()).pipeTo(await target.createWritable());
       return null;
     }
-    throw Error('Illegal target type');
+    throw Error(`Illegal target type, path: ${this.path}`);
   }
 
   /**
