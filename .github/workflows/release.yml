@@ -11,6 +11,8 @@ permissions:
   contents: write
   pull-requests: write
   repository-projects: write
+  # npm Trusted Publishing (OIDC) 需要此权限来申请 id-token
+  id-token: write
 
 jobs:
   release:
@@ -23,13 +25,18 @@ jobs:
       - name: set pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 9
+          # OIDC 发布端支持从 pnpm 11 开始提供
+          version: 11
 
-      - name: Setup Node.js 20.x
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          # Trusted Publishing 需要 Node >= 22.14 且内置 npm >= 11.5.1
+          node-version: 22
           cache: 'pnpm'
+
+      - name: Ensure npm >= 11.5.1
+        run: npm install -g npm@latest
 
       - name: Install Dependencies
         run: pnpm install --frozen-lockfile --ignore-scripts
@@ -47,4 +54,3 @@ jobs:
           publish: pnpm publish -r
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
