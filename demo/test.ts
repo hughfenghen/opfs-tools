@@ -1,11 +1,12 @@
-import { tmpfile, file, write } from '../src';
+import { tmpfile, file, write, dir } from '../src';
 
-console.log(111, localStorage.getItem('OPFS_TOOLS_EXPIRES_TMP_FILES'));
-const f = tmpfile();
-console.log(222, f.path);
-await write(f, '111111111');
+console.log(
+  'tmpfiles',
+  (await dir('/.opfs-tools-temp-dir').children()).map((it) => it.name)
+);
 
-await write('/.opfs-tools-temp-dir/xxx', '2222');
+const tf = tmpfile();
+await write(tf, '111111111');
 
 const filePath = '/unit-test/file';
 const f1 = file(filePath, 'rw-unsafe');
