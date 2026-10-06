@@ -74,7 +74,7 @@ test('read part of a file', async () => {
 
   expect(async () => {
     await reader.read(5);
-  }).rejects.toThrowError(Error('Reader is closed'));
+  }).rejects.toThrowError('Reader is closed');
 });
 
 test('write operation is exclusive', async () => {
@@ -82,13 +82,13 @@ test('write operation is exclusive', async () => {
   const writer = await f.createWriter();
   expect(async () => {
     await f.createWriter();
-  }).rejects.toThrowError(Error('Other writer have not been closed'));
+  }).rejects.toThrowError('file is locked by another writer');
 
   await writer.close();
 
   expect(async () => {
     await writer.write('44444');
-  }).rejects.toThrowError(Error('Writer is closed'));
+  }).rejects.toThrowError('Writer is closed');
 });
 
 test('read operations can be parallelized', async () => {
@@ -224,33 +224,23 @@ test('close reader twice', async () => {
 });
 
 test('multiple handler for single file', async () => {
-  const rwFile = file(filePath, 'rw');
-  const readOnlyFile1 = file(filePath, 'r');
-  const readOnlyFile2 = file(filePath, 'r');
-
-  await write(rwFile, '111');
-
-  expect(readOnlyFile1).not.toBe(readOnlyFile2);
-  expect(await readOnlyFile1.text()).toBe('111');
-  expect(await readOnlyFile2.text()).toBe('111');
-});
-
-test('read-only file dont write', async () => {
-  expect(async () => {
-    await write(file(filePath, 'r'), '111');
-  }).rejects.toThrowError('file is read-only');
-});
-
-test('unsafe write same file', async () => {
-  const f1 = file(filePath, 'rw-unsafe');
-  const f2 = file(filePath, 'rw-unsafe');
-  expect(f1.path).toBe(f2.path);
-  expect(f1).not.toBe(f2);
+  const f1 = file(filePath);
+  const f2 = file(filePath);
 
   await write(f1, '111');
-  await write(f1, '222');
 
-  expect(await f2.text()).toBe('222');
+  // 同一路径返回同一缓存实例
+  expect(f1).toBe(f2);
+  // 全 origin 共享唯一句柄，并发读自动排队
+  expect(await Promise.all([f1.text(), f2.text()])).toEqual(['111', '111']);
+});
+
+test('sequential writes to same file', async () => {
+  // 顺序写：前一个 writer close 释放锁后，下一个才能获取
+  await write(file(filePath), '111');
+  await write(file(filePath), '222');
+
+  expect(await file(filePath).text()).toBe('222');
 });
 
 test('remove file when unclos reader', async () => {

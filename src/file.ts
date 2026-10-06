@@ -1,8 +1,4 @@
-import {
-  OPFSWorkerAccessHandle,
-  OpenMode,
-  createOPFSAccess,
-} from './access-worker';
+import { createOPFSAccess, postToOPFS } from './access-worker';
 import { getFSHandle, joinPath, parsePath, remove } from './common';
 import { OTDir, dir } from './directory';
 
@@ -10,14 +6,16 @@ const fileCache = new Map<string, OTFile>();
 /**
  * Retrieves a file wrapper instance for the specified file path.
  * @param {string} filePath - The path of the file.
- * @param {'r' | 'rw' | 'rw-unsafe'} mode - A string specifying the locking mode for the access handle. The default value is "rw"
  * return A OTFile instance.
- * 
- * @see [MDN createSyncAccessHandle](https://developer.mozilla.org/en-US/docs/Web/API/FileSystemFileHandle/createSyncAccessHandle)
- * 
+ *
+ * 同一 tab 内，同一 path 的多个实例共享专用 Worker 中的唯一句柄：
+ * 并发 read 自动排队；并发 write 被 Web Locks 拒绝（文件已被锁时抛错）。
+ * 注意：createSyncAccessHandle 仅限 Dedicated Worker，句柄不跨 tab 共享；
+ * 跨 tab 同时打开同一文件仍受 OPFS 独占锁限制。
+ *
  * @example
  * // Read content from a file
-  const fileContent = await file('/path/to/file.txt', 'r').text();
+  const fileContent = await file('/path/to/file.txt').text();
   console.log('File content:', fileContent);
 
   // Check if a file exists
@@ -27,13 +25,10 @@ const fileCache = new Map<string, OTFile>();
   // Remove a file
   await file('/path/to/file.txt').remove();
  */
-export function file(filePath: string, mode: ShortOpenMode = 'rw') {
-  if (mode === 'rw') {
-    const f = fileCache.get(filePath) ?? new OTFile(filePath, mode);
-    fileCache.set(filePath, f);
-    return f;
-  }
-  return new OTFile(filePath, mode);
+export function file(filePath: string) {
+  const f = fileCache.get(filePath) ?? new OTFile(filePath);
+  fileCache.set(filePath, f);
+  return f;
 }
 
 /**
@@ -41,7 +36,7 @@ export function file(filePath: string, mode: ShortOpenMode = 'rw') {
  * @param {string} target - The path of the file.
  * @param {string | BufferSource | ReadableStream<BufferSource>} content - The content to write to the file.
  * return A promise that resolves when the content is written to the file.
- * 
+ *
  * @example
  * // Write content to a file
    await write('/path/to/file.txt', 'Hello, world!');
@@ -58,7 +53,7 @@ export async function write(
 
   const writer = await (target instanceof OTFile
     ? target
-    : file(target, 'rw')
+    : file(target)
   ).createWriter();
   try {
     if (opts.overwrite) await writer.truncate(0);
@@ -79,10 +74,39 @@ export async function write(
   }
 }
 
-let FILE_ID = 0;
-const genFileId = () => ++FILE_ID;
+// origin 级单写者互斥：writer 创建前必须抢占该文件的 Web Lock，
+// 拿不到（已被其它 writer 持有）即抛错。不支持 Web Locks 时用进程内 Set 兜底。
+const WRITER_LOCK_PREFIX = 'opfs-tools-writer:';
+const localWriteLocks = new Set<string>();
 
-type ShortOpenMode = 'r' | 'rw' | 'rw-unsafe';
+async function acquireWriteLock(path: string): Promise<() => void> {
+  const locks = globalThis.navigator?.locks;
+  if (locks == null) {
+    if (localWriteLocks.has(path))
+      throw Error(`file is locked by another writer: ${path}`);
+    localWriteLocks.add(path);
+    return () => localWriteLocks.delete(path);
+  }
+
+  let release: () => void = () => {};
+  const granted = await new Promise<boolean>((resolve) => {
+    locks
+      .request(`${WRITER_LOCK_PREFIX}${path}`, { ifAvailable: true }, (lock) => {
+        if (lock == null) {
+          resolve(false);
+          return;
+        }
+        resolve(true);
+        // 持有锁直到 writer.close() 调用 release。
+        return new Promise<void>((r) => {
+          release = r;
+        });
+      })
+      .catch(() => resolve(false));
+  });
+  if (!granted) throw Error(`file is locked by another writer: ${path}`);
+  return () => release();
+}
 
 /**
  * Represents a wrapper for interacting with a file in the filesystem.
@@ -107,85 +131,27 @@ export class OTFile {
   #path: string;
   #parentPath: string;
   #name: string;
-  #mode: OpenMode;
 
-  #id: number;
-  constructor(filePath: string, mode: ShortOpenMode) {
-    this.#id = genFileId();
+  constructor(filePath: string) {
     this.#path = filePath;
-    this.#mode = (
-      {
-        r: 'read-only',
-        rw: 'readwrite',
-        'rw-unsafe': 'readwrite-unsafe',
-      } as const
-    )[mode];
     const { parent, name } = parsePath(filePath);
     if (parent == null) throw Error(`Invalid path: ${filePath}`);
     this.#name = name;
     this.#parentPath = parent;
   }
 
-  #referCnt = 0;
-  #unsafeClose = async () => {};
-  #getAccessHandle = (() => {
-    let accPromise: Promise<
-      [OPFSWorkerAccessHandle, () => Promise<void>]
-    > | null = null;
-
-    return () => {
-      this.#referCnt += 1;
-      if (accPromise != null) return accPromise;
-
-      accPromise = new Promise(async (resolve, reject) => {
-        try {
-          const accHandle = await createOPFSAccess(
-            this.#id,
-            this.#path,
-            this.#mode
-          );
-
-          this.#unsafeClose = async () => {
-            if (accPromise == null) return;
-            accPromise = null;
-            this.#referCnt = 0;
-            await accHandle.close().catch(console.error);
-          };
-
-          resolve([
-            accHandle,
-            async () => {
-              this.#referCnt -= 1;
-              if (this.#referCnt > 0) return;
-
-              accPromise = null;
-              await accHandle.close();
-            },
-          ]);
-        } catch (err) {
-          reject(err);
-        }
-      });
-      return accPromise;
-    };
-  })();
-
-  #writing = false;
   /**
-   * Random write to file
+   * Random write to file.
+   * 需先获取该文件的全局写锁，文件已被其它 writer 锁定时抛错。
    */
   async createWriter() {
-    if (this.#mode === 'read-only')
-      throw Error(`file is read-only: ${this.#path}`);
-    if (this.#writing)
-      throw Error(`Other writer have not been closed: ${this.#path}`);
-    this.#writing = true;
+    const releaseLock = await acquireWriteLock(this.#path);
 
     try {
       const txtEC = new TextEncoder();
 
       // append content by default
-      const [accHandle, unref] = await this.#getAccessHandle();
+      const accHandle = await createOPFSAccess(this.#path);
       let pos = await accHandle.getSize();
       let closed = false;
       return {
@@ -213,21 +179,22 @@ export class OTFile {
         close: async () => {
           if (closed) throw Error(`Writer is closed: ${this.#path}`);
           closed = true;
-          this.#writing = false;
-          await unref();
+          await accHandle.close();
+          releaseLock();
         },
       };
     } catch (err) {
-      this.#writing = false;
+      releaseLock();
       throw err;
     }
   }
 
   /**
-   * Random access to file
+   * Random access to file.
+   * 读不加锁；同一 tab 内共享唯一句柄，并发 read 在 Worker 中自动排队。
    */
   async createReader() {
-    const [accHandle, unref] = await this.#getAccessHandle();
+    const accHandle = await createOPFSAccess(this.#path);
 
     let closed = false;
     let pos = 0;
@@ -246,7 +213,7 @@ export class OTFile {
       close: async () => {
         if (closed) return;
         closed = true;
-        await unref();
+        await accHandle.close();
       },
     };
   }
@@ -297,12 +264,14 @@ export class OTFile {
 
   async remove(opts: { force?: boolean } = {}) {
     if (opts.force === true) {
-      await this.#unsafeClose();
+      // 无视占用计数，强制关闭 Worker 中的句柄后删除。
+      await postToOPFS(this.#path, 'forceClose');
       await remove(this.#path);
       fileCache.delete(this.#path);
       return;
     }
-    if (this.#referCnt > 0)
+    // 占用校验下沉到 Worker：仍有未关闭的 reader/writer 时禁止删除。
+    if ((await postToOPFS(this.#path, 'isOpen')) === true)
       throw Error(`exists unclosed reader/writer: ${this.#path}`);
     await remove(this.#path);
   }

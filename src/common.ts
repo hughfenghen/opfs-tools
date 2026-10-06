@@ -10,6 +10,14 @@ export interface FileSystemSyncAccessHandle {
   getSize: () => Promise<number>;
 }
 
+// lib.dom 的 FileSystemFileHandle 未声明 createSyncAccessHandle（Worker-only 的 OPFS API），
+// 这里做全局声明合并补齐，供 worker 内使用。
+declare global {
+  interface FileSystemFileHandle {
+    createSyncAccessHandle(): Promise<FileSystemSyncAccessHandle>;
+  }
+}
+
 export function parsePath(path: string) {
   if (path === '/') return { parent: null, name: '' };
 
