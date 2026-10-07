@@ -16,11 +16,6 @@ import { OTDir, dir } from './directory';
  * @param {string} filePath - The path of the file.
  * return A OTFile instance.
  *
- * 同一 tab 内，同一 path 复用同一缓存实例并共享专用 Worker 中的唯一句柄：
- * 并发 read 自动排队；同一实例已有未关闭 writer 时再次 createWriter 抛错（实例级单写者互斥）。
- * 注意：createSyncAccessHandle 仅限 Dedicated Worker，句柄不跨 tab 共享；
- * 跨 tab 同时打开同一文件仍受 OPFS 独占锁限制。
- *
  * @example
  * // Read content from a file
   const fileContent = await file('/path/to/file.txt').text();
@@ -44,61 +39,67 @@ export declare function file(filePath: string): OTFile;
  * // Write content to a file
    await write('/path/to/file.txt', 'Hello, world!');
  */
-export declare function write(target: string | OTFile, content: string | BufferSource | ReadableStream<BufferSource> | OTFile, opts?: {
+export declare function write(
+  target: string | OTFile,
+  content: string | BufferSource | ReadableStream<BufferSource> | OTFile,
+  opts?: {
     overwrite: boolean;
-}): Promise<void>;
+  }
+): Promise<void>;
 /**
  * Represents a wrapper for interacting with a file in the filesystem.
  */
 export declare class OTFile {
-    #private;
-    get kind(): 'file';
-    get path(): string;
-    get name(): string;
-    get parent(): ReturnType<typeof dir> | null;
-    constructor(filePath: string);
-    /**
-     * Random write to file.
-     * 同一实例已存在未关闭的 writer 时抛错（单写者互斥）。
-     */
-    createWriter(): Promise<{
-        write: (chunk: string | BufferSource, opts?: {
-            at?: number;
-        }) => Promise<number>;
-        truncate: (size: number) => Promise<void>;
-        flush: () => Promise<void>;
-        close: () => Promise<void>;
-    }>;
-    /**
-     * Random access to file.
-     * 读不加锁；同一 tab 内共享唯一句柄，并发 read 在 Worker 中自动排队。
-     */
-    createReader(): Promise<{
-        read: (size: number, opts?: {
-            at?: number;
-        }) => Promise<ArrayBuffer>;
-        getSize: () => Promise<number>;
-        close: () => Promise<void>;
-    }>;
-    text(): Promise<string>;
-    arrayBuffer(): Promise<ArrayBuffer>;
-    stream(): Promise<ReadableStream<Uint8Array>>;
-    getOriginFile(): Promise<File | undefined>;
-    getSize(): Promise<number>;
-    exists(): Promise<boolean>;
-    remove(opts?: {
-        force?: boolean;
-    }): Promise<void>;
-    /**
-     * If the target is a file, use current overwrite the target;
-     * if the target is a folder, copy the current file into that folder.
-     */
-    copyTo(target: OTDir | OTFile): Promise<OTFile>;
-    copyTo(target: FileSystemFileHandle): Promise<null>;
-    /**
-     * move file, copy then remove current
-     */
-    moveTo(target: OTDir | OTFile): Promise<OTFile>;
+  #private;
+  get kind(): 'file';
+  get path(): string;
+  get name(): string;
+  get parent(): ReturnType<typeof dir> | null;
+  constructor(filePath: string);
+  /**
+   * Random write to file.
+   */
+  createWriter(): Promise<{
+    write: (
+      chunk: string | BufferSource,
+      opts?: {
+        at?: number;
+      }
+    ) => Promise<number>;
+    truncate: (size: number) => Promise<void>;
+    flush: () => Promise<void>;
+    close: () => Promise<void>;
+  }>;
+  /**
+   * Random access to file.
+   */
+  createReader(): Promise<{
+    read: (
+      size: number,
+      opts?: {
+        at?: number;
+      }
+    ) => Promise<ArrayBuffer>;
+    getSize: () => Promise<number>;
+    close: () => Promise<void>;
+  }>;
+  text(): Promise<string>;
+  arrayBuffer(): Promise<ArrayBuffer>;
+  stream(): Promise<ReadableStream<Uint8Array>>;
+  getOriginFile(): Promise<File | undefined>;
+  getSize(): Promise<number>;
+  exists(): Promise<boolean>;
+  remove(opts?: { force?: boolean }): Promise<void>;
+  /**
+   * If the target is a file, use current overwrite the target;
+   * if the target is a folder, copy the current file into that folder.
+   */
+  copyTo(target: OTDir | OTFile): Promise<OTFile>;
+  copyTo(target: FileSystemFileHandle): Promise<null>;
+  /**
+   * move file, copy then remove current
+   */
+  moveTo(target: OTDir | OTFile): Promise<OTFile>;
 }
 ```
 
@@ -107,10 +108,12 @@ export declare class OTFile {
 ```ts
 import { OTFile } from './file';
 declare global {
-    interface FileSystemDirectoryHandle {
-        keys: () => AsyncIterable<string>;
-        values: () => AsyncIterable<FileSystemDirectoryHandle | FileSystemFileHandle>;
-    }
+  interface FileSystemDirectoryHandle {
+    keys: () => AsyncIterable<string>;
+    values: () => AsyncIterable<
+      FileSystemDirectoryHandle | FileSystemFileHandle
+    >;
+  }
 }
 /**
  * Represents a directory with utility functions.
@@ -131,44 +134,42 @@ declare global {
  */
 export declare function dir(dirPath: string): OTDir;
 export declare class OTDir {
-    #private;
-    get kind(): 'dir';
-    get name(): string;
-    get path(): string;
-    get parent(): OTDir | null;
-    constructor(dirPath: string);
-    /**
-     * Creates the directory.
-     * return A promise that resolves when the directory is created.
-     */
-    create(): Promise<OTDir>;
-    /**
-     * Checks if the directory exists.
-     * return A promise that resolves to true if the directory exists, otherwise false.
-     */
-    exists(): Promise<boolean>;
-    /**
-     * Removes the directory.
-     * return A promise that resolves when the directory is removed.
-     */
-    remove(opts?: {
-        force?: boolean;
-    }): Promise<void>;
-    /**
-     * Retrieves the children of the directory.
-     * return A promise that resolves to an array of objects representing the children.
-     */
-    children(): Promise<Array<OTDir | OTFile>>;
-    /**
-     * If the dest folder exists, copy the current directory into the dest folder;
-     * if the dest folder does not exist, rename the current directory to dest name.
-     */
-    copyTo(dest: OTDir): Promise<OTDir>;
-    copyTo(dest: FileSystemDirectoryHandle): Promise<null>;
-    /**
-     * move directory, copy then remove current
-     */
-    moveTo(dest: OTDir): Promise<OTDir>;
+  #private;
+  get kind(): 'dir';
+  get name(): string;
+  get path(): string;
+  get parent(): OTDir | null;
+  constructor(dirPath: string);
+  /**
+   * Creates the directory.
+   * return A promise that resolves when the directory is created.
+   */
+  create(): Promise<OTDir>;
+  /**
+   * Checks if the directory exists.
+   * return A promise that resolves to true if the directory exists, otherwise false.
+   */
+  exists(): Promise<boolean>;
+  /**
+   * Removes the directory.
+   * return A promise that resolves when the directory is removed.
+   */
+  remove(opts?: { force?: boolean }): Promise<void>;
+  /**
+   * Retrieves the children of the directory.
+   * return A promise that resolves to an array of objects representing the children.
+   */
+  children(): Promise<Array<OTDir | OTFile>>;
+  /**
+   * If the dest folder exists, copy the current directory into the dest folder;
+   * if the dest folder does not exist, rename the current directory to dest name.
+   */
+  copyTo(dest: OTDir): Promise<OTDir>;
+  copyTo(dest: FileSystemDirectoryHandle): Promise<null>;
+  /**
+   * move directory, copy then remove current
+   */
+  moveTo(dest: OTDir): Promise<OTDir>;
 }
 ```
 

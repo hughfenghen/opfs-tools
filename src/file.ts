@@ -25,11 +25,6 @@ const otfileRegistry =
  * @param {string} filePath - The path of the file.
  * return A OTFile instance.
  *
- * 同一 tab 内，同一 path 复用同一缓存实例并共享专用 Worker 中的唯一句柄：
- * 并发 read 自动排队；同一实例已有未关闭 writer 时再次 createWriter 抛错（实例级单写者互斥）。
- * 注意：createSyncAccessHandle 仅限 Dedicated Worker，句柄不跨 tab 共享；
- * 跨 tab 同时打开同一文件仍受 OPFS 独占锁限制。
- *
  * @example
  * // Read content from a file
   const fileContent = await file('/path/to/file.txt').text();
@@ -130,7 +125,6 @@ export class OTFile {
   #writing = false;
   /**
    * Random write to file.
-   * 同一实例已存在未关闭的 writer 时抛错（单写者互斥）。
    */
   async createWriter() {
     if (this.#writing)
@@ -181,7 +175,6 @@ export class OTFile {
 
   /**
    * Random access to file.
-   * 读不加锁；同一 tab 内共享唯一句柄，并发 read 在 Worker 中自动排队。
    */
   async createReader() {
     const accHandle = await createOPFSAccess(this.#path);
