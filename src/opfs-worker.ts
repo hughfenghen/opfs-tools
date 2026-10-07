@@ -15,6 +15,12 @@ type MsgData = {
   args: Record<string, any>;
 };
 
+// handles 由非空变为空时，向池侧发一条「空闲」信号（非回调消息，无 cbId），
+// 由 access-worker 据此启动该 Worker 的冷却回收倒计时。
+function emitIdleIfEmpty(post: (msg: unknown, trans?: Transferable[]) => void) {
+  if (handles.size === 0) post({ evtType: 'idle' });
+}
+
 async function handleMsg(
   data: MsgData,
   post: (msg: unknown, trans?: Transferable[]) => void
@@ -57,6 +63,8 @@ async function handleMsg(
         if (entry.count <= 0) {
           handles.delete(filePath);
           (await entry.handleP).close();
+          // 本 Worker 句柄已全部关闭 → 通知池侧启动空闲冷却。
+          emitIdleIfEmpty(post);
         }
       }
     } else if (evtType === 'forceClose') {
@@ -65,7 +73,11 @@ async function handleMsg(
         // close() 为同步方法，返回 undefined，不能 .catch()
         try {
           (await entry.handleP).close();
-        } catch {}
+        } catch (err) {
+          throw err;
+        } finally {
+          emitIdleIfEmpty(post);
+        }
       }
     } else if (evtType === 'isOpen') {
       returnVal = entry != null && entry.count > 0;

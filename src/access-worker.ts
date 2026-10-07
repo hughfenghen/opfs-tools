@@ -39,27 +39,28 @@ const WORKER_IDLE_TTL_MS = 10_000;
 
 type WorkerEntry = {
   msger: Msger;
-  // 当前绑定到该 Worker 的活跃 path 数；为 0 表示空闲。
+  // 当前绑定到该 Worker 的 path 数，仅供 pickWorkerForNewPath 负载均衡；
+  // bind 时 ++，terminate 清绑定时归零（不再随 close 递减，由 idle 信号判空闲）。
   pathCount: number;
+  // 空闲标志：由 opfs-worker 的句柄全闭信号驱动，取代原先用 pathCount 判空闲。
+  idle: boolean;
   // 空闲冷却计时器句柄；非空表示该 Worker 正在冷却待销毁。
   shrinkTimer?: ReturnType<typeof setTimeout>;
 };
 
-type PathBinding = {
-  workerId: number;
-  // 该 path 的 open 净计数，与 Worker 内 handles 的 count 对应。
-  openCount: number;
-};
-
 const workers = new Map<number, WorkerEntry>();
-const pathBindings = new Map<string, PathBinding>();
+const pathBindings = new Map<string, number>();
 let workerSeq = 0;
 
-/** 新建一个 Worker 并入表，注入「死亡时清理本 Worker 绑定」的钩子。 */
+/** 新建一个 Worker 并入表，注入「死亡时清理」与「空闲信号」两个钩子。 */
 function spawnWorker(): number {
   const workerId = (workerSeq += 1);
-  const msger = createMsger(() => handleWorkerFatal(workerId));
-  workers.set(workerId, { msger, pathCount: 0 });
+  const msger = createMsger(
+    () => handleWorkerFatal(workerId),
+    () => onIdle(workerId)
+  );
+  // 新 Worker 尚无句柄，初始 idle；若随即被 bindNewPath 复用会被 markBusy 置回。
+  workers.set(workerId, { msger, pathCount: 0, idle: true });
   return workerId;
 }
 
@@ -70,7 +71,7 @@ function ensurePrewarm(): void {
 
 /**
  * 为「新 path」选择一个 Worker（4.3）：
- * 1. 空闲 Worker（pathCount===0）优先复用；
+ * 1. 空闲 Worker（entry.idle，由句柄全闭信号驱动）优先复用；
  * 2. 否则未达上限则扩容新建；
  * 3. 否则选 pathCount 最小者复用（多路复用 → 在该 Worker 线程内串行排队）。
  */
@@ -78,7 +79,7 @@ function pickWorkerForNewPath(): number {
   let minId = -1;
   let minCount = Infinity;
   for (const [id, entry] of workers) {
-    if (entry.pathCount === 0) return id;
+    if (entry.idle) return id;
     if (entry.pathCount < minCount) {
       minCount = entry.pathCount;
       minId = id;
@@ -86,6 +87,14 @@ function pickWorkerForNewPath(): number {
   }
   if (workers.size < MAX_WORKERS) return spawnWorker();
   return minId;
+}
+
+/** 标记某 Worker 为繁忙：置 idle=false 并取消其冷却计时（任何 open 转发前同步调用）。 */
+function markBusy(workerId: number): void {
+  const entry = workers.get(workerId);
+  if (entry == null) return;
+  entry.idle = false;
+  cancelShrink(workerId);
 }
 
 /**
@@ -98,42 +107,48 @@ function bindNewPath(filePath: string): number {
   const workerId = pickWorkerForNewPath();
   const entry = workers.get(workerId);
   if (entry != null) entry.pathCount += 1;
-  // 该 Worker 可能正处于空闲冷却中（被优先复用），取消其销毁计时。
-  cancelShrink(workerId);
-  pathBindings.set(filePath, { workerId, openCount: 1 });
+  pathBindings.set(filePath, workerId);
+  // 置繁忙 + 取消冷却（该 Worker 可能正处于空闲冷却中被优先复用）。
+  markBusy(workerId);
   return workerId;
 }
 
 /** 按 path 路由到其绑定 Worker 的 postMsg；未绑定返回 null。 */
 function routeTo(filePath: string): PostMsg | null {
-  const binding = pathBindings.get(filePath);
-  if (binding == null) return null;
-  return workers.get(binding.workerId)?.msger.postMsg ?? null;
+  const workerId = pathBindings.get(filePath);
+  if (workerId == null) return null;
+  return workers.get(workerId)?.msger.postMsg ?? null;
 }
 
 /**
- * 为空闲（pathCount===0）Worker 安排延时冷却销毁：到期仍空闲且高于下限才真正 terminate。
+ * 为空闲（entry.idle）Worker 安排延时冷却销毁：到期仍空闲且高于下限才真正 terminate。
  * 已在冷却中则不重复安排（空闲状态连续，无需重置计时）。
  */
 function scheduleShrink(workerId: number): void {
   const entry = workers.get(workerId);
-  if (entry == null || entry.pathCount > 0 || entry.shrinkTimer != null) return;
+  if (entry == null || !entry.idle || entry.shrinkTimer != null) return;
   entry.shrinkTimer = setTimeout(() => runShrink(workerId), WORKER_IDLE_TTL_MS);
 }
 
-/** 冷却到期回调：重新判定（池大小可能已变），仍空闲且高于下限才销毁，否则保活为预热池。 */
+/**
+ * 冷却到期回调：重新判定（期间可能又被 open 置忙），仍空闲且高于下限才销毁，
+ * 并连带清除该 Worker 名下所有 path 绑定（此刻 idle ⇒ 无存活句柄，清绑定安全）。
+ */
 function runShrink(workerId: number): void {
   const entry = workers.get(workerId);
   if (entry == null) return;
   entry.shrinkTimer = undefined;
-  if (entry.pathCount > 0) return;
+  if (!entry.idle) return;
   if (workers.size > MIN_WORKERS) {
     entry.msger.terminate();
     workers.delete(workerId);
+    for (const [filePath, wid] of pathBindings) {
+      if (wid === workerId) pathBindings.delete(filePath);
+    }
   }
 }
 
-/** Worker 被复用（pathCount 从 0 升起）时取消其冷却计时，避免被销毁。 */
+/** Worker 被复用（重新置忙）时取消其冷却计时，避免被销毁。 */
 function cancelShrink(workerId: number): void {
   const entry = workers.get(workerId);
   if (entry?.shrinkTimer != null) {
@@ -142,30 +157,26 @@ function cancelShrink(workerId: number): void {
   }
 }
 
-/** close / open 失败回滚：openCount--，归零则解绑 + pathCount-- + 缩减判定。 */
-function releasePath(filePath: string): void {
-  const binding = pathBindings.get(filePath);
-  if (binding == null) return;
-  binding.openCount -= 1;
-  if (binding.openCount <= 0) {
-    pathBindings.delete(filePath);
-    const entry = workers.get(binding.workerId);
-    if (entry != null) {
-      entry.pathCount -= 1;
-      if (entry.pathCount <= 0) scheduleShrink(binding.workerId);
-    }
-  }
+/** 收到 opfs-worker 的空闲信号（句柄全闭）：置 idle 并启动冷却回收倒计时。 */
+function onIdle(workerId: number): void {
+  const entry = workers.get(workerId);
+  if (entry == null) return;
+  entry.idle = true;
+  scheduleShrink(workerId);
 }
 
-/** forceClose：无视计数直接解绑 + pathCount-- + 冷却判定。 */
-function forceUnbind(filePath: string): void {
-  const binding = pathBindings.get(filePath);
-  if (binding == null) return;
+/**
+ * open 转发失败且本次新建了绑定时的回滚：删除绑定、pathCount--，
+ * 若该 Worker 已无绑定则置 idle 并安排冷却（open 失败时 Worker 未发 idle 信号，须主动兜底）。
+ */
+function unbindFailedOpen(filePath: string, workerId: number): void {
   pathBindings.delete(filePath);
-  const entry = workers.get(binding.workerId);
-  if (entry != null) {
-    entry.pathCount -= 1;
-    if (entry.pathCount <= 0) scheduleShrink(binding.workerId);
+  const entry = workers.get(workerId);
+  if (entry == null) return;
+  entry.pathCount -= 1;
+  if (entry.pathCount <= 0) {
+    entry.idle = true;
+    scheduleShrink(workerId);
   }
 }
 
@@ -178,8 +189,8 @@ function handleWorkerFatal(workerId: number): void {
   // 清理挂起的冷却计时器，避免到期后对已移除的 workerId 空跑。
   if (entry?.shrinkTimer != null) clearTimeout(entry.shrinkTimer);
   workers.delete(workerId);
-  for (const [filePath, binding] of pathBindings) {
-    if (binding.workerId === workerId) pathBindings.delete(filePath);
+  for (const [filePath, wid] of pathBindings) {
+    if (wid === workerId) pathBindings.delete(filePath);
   }
 }
 
@@ -191,13 +202,13 @@ function handleWorkerFatal(workerId: number): void {
 export async function createOPFSAccess(
   filePath: string
 ): Promise<OPFSWorkerAccessHandle> {
-  // 在任何 await 之前同步完成绑定/增计数，保证并发 open 的粘性路由正确。
-  const binding = pathBindings.get(filePath);
-  if (binding == null) {
-    bindNewPath(filePath);
-  } else {
-    binding.openCount += 1;
-  }
+  // 在任何 await 之前同步完成绑定/置忙，保证并发 open 的粘性路由正确、
+  // 且空闲信号晚于新 open 时被 idle=false 兜住（见 4.3 竞态处理）。
+  const bound = pathBindings.get(filePath);
+  const isNewBinding = bound == null;
+  const workerId = isNewBinding
+    ? bindNewPath(filePath)
+    : (markBusy(bound), bound);
 
   const postMsg = routeTo(filePath);
   if (postMsg == null) throw Error(`route not found: ${filePath}`);
@@ -205,8 +216,8 @@ export async function createOPFSAccess(
   try {
     await postMsg('open', { filePath });
   } catch (err) {
-    // open 转发失败：回滚路由侧计数/绑定，避免条目残留。
-    releasePath(filePath);
+    // open 转发失败：仅当本次新建了绑定时回滚，避免误删复用中的既有绑定。
+    if (isNewBinding) unbindFailedOpen(filePath, workerId);
     throw err;
   }
 
@@ -224,12 +235,10 @@ export async function createOPFSAccess(
       ])) as number;
     },
     close: async () => {
+      // 池侧不再计数：仅转发 close，句柄归零由 Worker 内部判定、
+      // 并经 idle 信号驱动池侧冷却。
       const pm = routeTo(filePath);
-      try {
-        if (pm != null) await pm('close', { filePath });
-      } finally {
-        releasePath(filePath);
-      }
+      if (pm != null) await pm('close', { filePath });
     },
     truncate: async (newSize: number) => {
       const pm = routeTo(filePath);
@@ -260,18 +269,16 @@ export function postToOPFS(
     if (postMsg == null) return Promise.resolve(false);
     return postMsg('isOpen', { filePath });
   }
-  // forceClose：未绑定则无事可做。
+  // forceClose：未绑定则无事可做。绑定清理交由后续 idle 信号 → 冷却 → terminate。
   if (postMsg == null) return Promise.resolve(undefined);
-  const resP = postMsg('forceClose', { filePath });
-  forceUnbind(filePath);
-  return resP;
+  return postMsg('forceClose', { filePath });
 }
 
 /**
  * 创建单个 Worker 的消息收发器（每 Worker 一个）。
  * onFatal 在 Worker 加载/运行错误时被调用，交由路由器清理本 Worker 的绑定。
  */
-function createMsger(onFatal: () => void): Msger {
+function createMsger(onFatal: () => void, onIdle: () => void): Msger {
   const worker = new OPFSWorker();
 
   let cbId = 0;
@@ -299,6 +306,11 @@ function createMsger(onFatal: () => void): Msger {
       errMsg: string;
     };
   }) => {
+    // 空闲信号：非回调消息（无 cbId），句柄全闭时由 opfs-worker 主动发来。
+    if (data.evtType === 'idle') {
+      onIdle();
+      return;
+    }
     if (data.evtType === 'callback') {
       cbFns[data.cbId]?.resolve(data.returnVal);
     } else if (data.evtType === 'throwError') {
@@ -333,4 +345,5 @@ export const __test__ = {
   runShrink,
   cancelShrink,
   handleWorkerFatal,
+  onIdle,
 };

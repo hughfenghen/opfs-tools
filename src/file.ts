@@ -2,14 +2,31 @@ import { createOPFSAccess, postToOPFS } from './access-worker';
 import { getFSHandle, joinPath, parsePath, remove } from './common';
 import { OTDir, dir } from './directory';
 
-const fileCache = new Map<string, OTFile>();
+// fileCache 弱引用化：允许无人使用的 OTFile 被 GC；不再强引用导致永驻。
+const fileCache = new Map<string, WeakRef<OTFile>>();
+
+// OTFile 被 GC 时的兜底安全网：淘汰缓存 + forceClose 泄漏句柄（heldValue 为纯 path）。
+// 单写者互斥由实例级 #writing 承载、随实例 GC 消失，无外部锁可泄漏，故回调无需释放锁。
+// 运行时不支持 FinalizationRegistry 时退化为 null（仅失去自动兜底，仍可显式 close）。
+const otfileRegistry =
+  typeof FinalizationRegistry !== 'undefined'
+    ? new FinalizationRegistry<string>((path) => {
+        // 缓存淘汰 + 句柄 forceClose：仅当该 path 已无存活 OTFile，
+        // 避免「旧实例终结回调晚于同 path 新实例写入」时误删/误关新实例。
+        if (fileCache.get(path)?.deref() === undefined) {
+          fileCache.delete(path);
+          // 终结回调不能 await，fire-and-forget；forceClose 对已关句柄天然 no-op。
+          postToOPFS(path, 'forceClose');
+        }
+      })
+    : null;
 /**
  * Retrieves a file wrapper instance for the specified file path.
  * @param {string} filePath - The path of the file.
  * return A OTFile instance.
  *
- * 同一 tab 内，同一 path 的多个实例共享专用 Worker 中的唯一句柄：
- * 并发 read 自动排队；并发 write 被 Web Locks 拒绝（文件已被锁时抛错）。
+ * 同一 tab 内，同一 path 复用同一缓存实例并共享专用 Worker 中的唯一句柄：
+ * 并发 read 自动排队；同一实例已有未关闭 writer 时再次 createWriter 抛错（实例级单写者互斥）。
  * 注意：createSyncAccessHandle 仅限 Dedicated Worker，句柄不跨 tab 共享；
  * 跨 tab 同时打开同一文件仍受 OPFS 独占锁限制。
  *
@@ -26,8 +43,12 @@ const fileCache = new Map<string, OTFile>();
   await file('/path/to/file.txt').remove();
  */
 export function file(filePath: string) {
-  const f = fileCache.get(filePath) ?? new OTFile(filePath);
-  fileCache.set(filePath, f);
+  const cacheF = fileCache.get(filePath)?.deref();
+  if (cacheF) return cacheF;
+  const f = new OTFile(filePath);
+  fileCache.set(filePath, new WeakRef(f));
+  // GC 兜底注册下沉到工厂：heldValue 为纯 path，OTFile 被回收时淘汰缓存 + forceClose 句柄。
+  otfileRegistry?.register(f, filePath);
   return f;
 }
 
@@ -74,40 +95,6 @@ export async function write(
   }
 }
 
-// origin 级单写者互斥：writer 创建前必须抢占该文件的 Web Lock，
-// 拿不到（已被其它 writer 持有）即抛错。不支持 Web Locks 时用进程内 Set 兜底。
-const WRITER_LOCK_PREFIX = 'opfs-tools-writer:';
-const localWriteLocks = new Set<string>();
-
-async function acquireWriteLock(path: string): Promise<() => void> {
-  const locks = globalThis.navigator?.locks;
-  if (locks == null) {
-    if (localWriteLocks.has(path))
-      throw Error(`file is locked by another writer: ${path}`);
-    localWriteLocks.add(path);
-    return () => localWriteLocks.delete(path);
-  }
-
-  let release: () => void = () => {};
-  const granted = await new Promise<boolean>((resolve) => {
-    locks
-      .request(`${WRITER_LOCK_PREFIX}${path}`, { ifAvailable: true }, (lock) => {
-        if (lock == null) {
-          resolve(false);
-          return;
-        }
-        resolve(true);
-        // 持有锁直到 writer.close() 调用 release。
-        return new Promise<void>((r) => {
-          release = r;
-        });
-      })
-      .catch(() => resolve(false));
-  });
-  if (!granted) throw Error(`file is locked by another writer: ${path}`);
-  return () => release();
-}
-
 /**
  * Represents a wrapper for interacting with a file in the filesystem.
  */
@@ -140,12 +127,15 @@ export class OTFile {
     this.#parentPath = parent;
   }
 
+  #writing = false;
   /**
    * Random write to file.
-   * 需先获取该文件的全局写锁，文件已被其它 writer 锁定时抛错。
+   * 同一实例已存在未关闭的 writer 时抛错（单写者互斥）。
    */
   async createWriter() {
-    const releaseLock = await acquireWriteLock(this.#path);
+    if (this.#writing)
+      throw Error(`file is locked by another writer: ${this.#path}`);
+    this.#writing = true;
 
     try {
       const txtEC = new TextEncoder();
@@ -180,11 +170,11 @@ export class OTFile {
           if (closed) throw Error(`Writer is closed: ${this.#path}`);
           closed = true;
           await accHandle.close();
-          releaseLock();
+          this.#writing = false;
         },
       };
     } catch (err) {
-      releaseLock();
+      this.#writing = false;
       throw err;
     }
   }

@@ -16,8 +16,8 @@ import { OTDir, dir } from './directory';
  * @param {string} filePath - The path of the file.
  * return A OTFile instance.
  *
- * 同一 tab 内，同一 path 的多个实例共享专用 Worker 中的唯一句柄：
- * 并发 read 自动排队；并发 write 被 Web Locks 拒绝（文件已被锁时抛错）。
+ * 同一 tab 内，同一 path 复用同一缓存实例并共享专用 Worker 中的唯一句柄：
+ * 并发 read 自动排队；同一实例已有未关闭 writer 时再次 createWriter 抛错（实例级单写者互斥）。
  * 注意：createSyncAccessHandle 仅限 Dedicated Worker，句柄不跨 tab 共享；
  * 跨 tab 同时打开同一文件仍受 OPFS 独占锁限制。
  *
@@ -59,7 +59,7 @@ export declare class OTFile {
     constructor(filePath: string);
     /**
      * Random write to file.
-     * 需先获取该文件的全局写锁，文件已被其它 writer 锁定时抛错。
+     * 同一实例已存在未关闭的 writer 时抛错（单写者互斥）。
      */
     createWriter(): Promise<{
         write: (chunk: string | BufferSource, opts?: {
