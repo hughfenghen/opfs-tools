@@ -33,11 +33,16 @@ type Msger = {
 
 const MAX_WORKERS = 10;
 const MIN_WORKERS = 3;
+// 空闲 Worker 的冷却时长（ms）：pathCount 归零后不立刻销毁，延时到期仍空闲才 terminate。
+// 吸收常见 close→reopen 抖动，避免反复重建 Worker 的成本；可按实测调整。
+const WORKER_IDLE_TTL_MS = 10_000;
 
 type WorkerEntry = {
   msger: Msger;
   // 当前绑定到该 Worker 的活跃 path 数；为 0 表示空闲。
   pathCount: number;
+  // 空闲冷却计时器句柄；非空表示该 Worker 正在冷却待销毁。
+  shrinkTimer?: ReturnType<typeof setTimeout>;
 };
 
 type PathBinding = {
@@ -93,6 +98,8 @@ function bindNewPath(filePath: string): number {
   const workerId = pickWorkerForNewPath();
   const entry = workers.get(workerId);
   if (entry != null) entry.pathCount += 1;
+  // 该 Worker 可能正处于空闲冷却中（被优先复用），取消其销毁计时。
+  cancelShrink(workerId);
   pathBindings.set(filePath, { workerId, openCount: 1 });
   return workerId;
 }
@@ -104,13 +111,34 @@ function routeTo(filePath: string): PostMsg | null {
   return workers.get(binding.workerId)?.msger.postMsg ?? null;
 }
 
-/** 空闲（pathCount===0）Worker 在高于下限时销毁，否则保活为预热池。 */
-function maybeShrink(workerId: number): void {
+/**
+ * 为空闲（pathCount===0）Worker 安排延时冷却销毁：到期仍空闲且高于下限才真正 terminate。
+ * 已在冷却中则不重复安排（空闲状态连续，无需重置计时）。
+ */
+function scheduleShrink(workerId: number): void {
   const entry = workers.get(workerId);
-  if (entry == null || entry.pathCount > 0) return;
+  if (entry == null || entry.pathCount > 0 || entry.shrinkTimer != null) return;
+  entry.shrinkTimer = setTimeout(() => runShrink(workerId), WORKER_IDLE_TTL_MS);
+}
+
+/** 冷却到期回调：重新判定（池大小可能已变），仍空闲且高于下限才销毁，否则保活为预热池。 */
+function runShrink(workerId: number): void {
+  const entry = workers.get(workerId);
+  if (entry == null) return;
+  entry.shrinkTimer = undefined;
+  if (entry.pathCount > 0) return;
   if (workers.size > MIN_WORKERS) {
     entry.msger.terminate();
     workers.delete(workerId);
+  }
+}
+
+/** Worker 被复用（pathCount 从 0 升起）时取消其冷却计时，避免被销毁。 */
+function cancelShrink(workerId: number): void {
+  const entry = workers.get(workerId);
+  if (entry?.shrinkTimer != null) {
+    clearTimeout(entry.shrinkTimer);
+    entry.shrinkTimer = undefined;
   }
 }
 
@@ -124,12 +152,12 @@ function releasePath(filePath: string): void {
     const entry = workers.get(binding.workerId);
     if (entry != null) {
       entry.pathCount -= 1;
-      if (entry.pathCount <= 0) maybeShrink(binding.workerId);
+      if (entry.pathCount <= 0) scheduleShrink(binding.workerId);
     }
   }
 }
 
-/** forceClose：无视计数直接解绑 + pathCount-- + 缩减判定。 */
+/** forceClose：无视计数直接解绑 + pathCount-- + 冷却判定。 */
 function forceUnbind(filePath: string): void {
   const binding = pathBindings.get(filePath);
   if (binding == null) return;
@@ -137,7 +165,7 @@ function forceUnbind(filePath: string): void {
   const entry = workers.get(binding.workerId);
   if (entry != null) {
     entry.pathCount -= 1;
-    if (entry.pathCount <= 0) maybeShrink(binding.workerId);
+    if (entry.pathCount <= 0) scheduleShrink(binding.workerId);
   }
 }
 
@@ -146,6 +174,9 @@ function forceUnbind(filePath: string): void {
  * 使后续 open 可重新分配（不就地重建以免错误循环；下次 open 的 ensurePrewarm 会补回下限）。
  */
 function handleWorkerFatal(workerId: number): void {
+  const entry = workers.get(workerId);
+  // 清理挂起的冷却计时器，避免到期后对已移除的 workerId 空跑。
+  if (entry?.shrinkTimer != null) clearTimeout(entry.shrinkTimer);
   workers.delete(workerId);
   for (const [filePath, binding] of pathBindings) {
     if (binding.workerId === workerId) pathBindings.delete(filePath);
@@ -288,3 +319,18 @@ function createMsger(onFatal: () => void): Msger {
 
   return { postMsg, terminate: () => worker.terminate() };
 }
+
+// ============================================================================
+// 仅供单元测试：暴露 Worker 池内部以验证空闲冷却状态机。
+// 不经 index.ts 再导出，不属于对外 API（gen-api.js 仅解析 file/directory/tmpfile）。
+// ============================================================================
+export const __test__ = {
+  workers,
+  pathBindings,
+  WORKER_IDLE_TTL_MS,
+  MIN_WORKERS,
+  scheduleShrink,
+  runShrink,
+  cancelShrink,
+  handleWorkerFatal,
+};
