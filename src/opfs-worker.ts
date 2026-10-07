@@ -2,11 +2,9 @@ import { FileSystemSyncAccessHandle, getFSHandle } from './common';
 
 // 以 filePath 为键，持有「每个文件唯一」的 SyncAccessHandle，并对其 open/close 计数；
 // count 归零即真正关闭句柄。
-// 存「创建 Promise」而非句柄本身：open 时在任何 await 之前同步写入 Map，
-// 使并发 open 复用同一次创建，避免对同一文件重复 createSyncAccessHandle 的竞态。
 const handles = new Map<
   string,
-  { handleP: Promise<FileSystemSyncAccessHandle>; count: number }
+  { handleP: FileSystemSyncAccessHandle; count: number }
 >();
 
 type MsgData = {
@@ -36,21 +34,18 @@ async function handleMsg(
     if (evtType === 'open') {
       // open 替代原 register：首次打开创建句柄，之后仅累加计数。
       if (entry == null) {
-        const handleP = (async () => {
-          const fh = await getFSHandle(filePath, {
-            create: true,
-            isFile: true,
-          });
-          if (fh == null) throw Error(`not found file: ${filePath}`);
-          return await fh.createSyncAccessHandle();
-        })();
+        const fh = await getFSHandle(filePath, {
+          create: true,
+          isFile: true,
+        });
+        if (fh == null) throw Error(`not found file: ${filePath}`);
+        const handleP = await fh.createSyncAccessHandle();
         entry = { handleP, count: 0 };
         // 同步写入，确保并发 open 复用同一创建 Promise。
         handles.set(filePath, entry);
       }
       entry.count += 1;
       try {
-        await entry.handleP;
       } catch (err) {
         // 创建失败：回滚计数并清理，避免条目残留卡死后续 open。
         entry.count -= 1;
@@ -62,7 +57,7 @@ async function handleMsg(
         entry.count -= 1;
         if (entry.count <= 0) {
           handles.delete(filePath);
-          (await entry.handleP).close();
+          entry.handleP.close();
           // 本 Worker 句柄已全部关闭 → 通知池侧启动空闲冷却。
           emitIdleIfEmpty(post);
         }
@@ -72,7 +67,7 @@ async function handleMsg(
         handles.delete(filePath);
         // close() 为同步方法，返回 undefined，不能 .catch()
         try {
-          (await entry.handleP).close();
+          entry.handleP.close();
         } catch (err) {
           throw err;
         } finally {
@@ -83,15 +78,15 @@ async function handleMsg(
       returnVal = entry != null && entry.count > 0;
     } else {
       if (entry == null) throw Error(`file not opened: ${filePath}`);
-      const accessHandle = await entry.handleP;
+      const accessHandle = entry.handleP;
       if (evtType === 'truncate') {
-        await accessHandle.truncate(args.newSize);
+        accessHandle.truncate(args.newSize);
       } else if (evtType === 'write') {
-        returnVal = await accessHandle.write(args.data, args.opts);
+        returnVal = accessHandle.write(args.data, args.opts);
       } else if (evtType === 'read') {
         const { offset, size } = args;
         const uint8Buf = new Uint8Array(size);
-        const readLen = await accessHandle.read(uint8Buf, { at: offset });
+        const readLen = accessHandle.read(uint8Buf, { at: offset });
         const buf = uint8Buf.buffer;
         returnVal =
           readLen === size
@@ -100,9 +95,9 @@ async function handleMsg(
               buf.transfer?.(readLen) ?? buf.slice(0, readLen);
         trans.push(returnVal as ArrayBuffer);
       } else if (evtType === 'getSize') {
-        returnVal = await accessHandle.getSize();
+        returnVal = accessHandle.getSize();
       } else if (evtType === 'flush') {
-        await accessHandle.flush();
+        accessHandle.flush();
       }
     }
 

@@ -1,13 +1,10 @@
 export interface FileSystemSyncAccessHandle {
-  read: (container: ArrayBuffer, opts: { at: number }) => Promise<number>;
-  write: (
-    data: ArrayBuffer | ArrayBufferView,
-    opts?: { at: number }
-  ) => Promise<number>;
-  flush: () => Promise<void>;
-  close: () => Promise<void>;
-  truncate: (newSize: number) => Promise<void>;
-  getSize: () => Promise<number>;
+  read: (container: ArrayBuffer, opts: { at: number }) => number;
+  write: (data: ArrayBuffer | ArrayBufferView, opts?: { at: number }) => number;
+  flush: () => void;
+  close: () => void;
+  truncate: (newSize: number) => void;
+  getSize: () => number;
 }
 
 // lib.dom 的 FileSystemFileHandle 未声明 createSyncAccessHandle（Worker-only 的 OPFS API），

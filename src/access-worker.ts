@@ -3,13 +3,18 @@ import { FileSystemSyncAccessHandle } from './common';
 // 内联（blob）对专用 Worker 无影响：每个 tab 本就各自持有自己的 Worker，不需要跨 tab 共享实例。
 import OPFSWorker from './opfs-worker?worker&inline';
 
+// 这些句柄方法经 Worker 消息往返，实现均为异步，故在同步版 FileSystemSyncAccessHandle
+// 参数类型基础上统一包成 Promise 返回，按实际实现声明。
 export type OPFSWorkerAccessHandle = {
   read: (offset: number, size: number) => Promise<ArrayBuffer>;
-  write: FileSystemSyncAccessHandle['write'];
-  close: FileSystemSyncAccessHandle['close'];
-  truncate: FileSystemSyncAccessHandle['truncate'];
-  getSize: FileSystemSyncAccessHandle['getSize'];
-  flush: FileSystemSyncAccessHandle['flush'];
+  write: (
+    data: Parameters<FileSystemSyncAccessHandle['write']>[0],
+    opts?: Parameters<FileSystemSyncAccessHandle['write']>[1]
+  ) => Promise<number>;
+  close: () => Promise<void>;
+  truncate: (newSize: number) => Promise<void>;
+  getSize: () => Promise<number>;
+  flush: () => Promise<void>;
 };
 
 type PostMsg = (
@@ -223,37 +228,24 @@ export async function createOPFSAccess(
 
   return {
     read: async (offset, size) => {
-      const pm = routeTo(filePath);
-      if (pm == null) throw Error(`file not opened: ${filePath}`);
-      return (await pm('read', { filePath, offset, size })) as ArrayBuffer;
+      return (await postMsg('read', { filePath, offset, size })) as ArrayBuffer;
     },
     write: async (data, opts) => {
-      const pm = routeTo(filePath);
-      if (pm == null) throw Error(`file not opened: ${filePath}`);
-      return (await pm('write', { filePath, data, opts }, [
+      return (await postMsg('write', { filePath, data, opts }, [
         ArrayBuffer.isView(data) ? data.buffer : data,
       ])) as number;
     },
     close: async () => {
-      // 池侧不再计数：仅转发 close，句柄归零由 Worker 内部判定、
-      // 并经 idle 信号驱动池侧冷却。
-      const pm = routeTo(filePath);
-      if (pm != null) await pm('close', { filePath });
+      await postMsg('close', { filePath });
     },
     truncate: async (newSize: number) => {
-      const pm = routeTo(filePath);
-      if (pm == null) throw Error(`file not opened: ${filePath}`);
-      await pm('truncate', { filePath, newSize });
+      await postMsg('truncate', { filePath, newSize });
     },
     getSize: async () => {
-      const pm = routeTo(filePath);
-      if (pm == null) throw Error(`file not opened: ${filePath}`);
-      return (await pm('getSize', { filePath })) as number;
+      return (await postMsg('getSize', { filePath })) as number;
     },
     flush: async () => {
-      const pm = routeTo(filePath);
-      if (pm == null) throw Error(`file not opened: ${filePath}`);
-      await pm('flush', { filePath });
+      await postMsg('flush', { filePath });
     },
   };
 }

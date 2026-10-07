@@ -60,7 +60,8 @@
   <div>
     <span>indexeddb:</span>
     <strong id="indexeddb-read-cost"></strong>
-    <span class="tip">, read 1000 records sequentially（顺序读取前面创建的 1000 条记录）</span>
+    <span class="tip">, read 1000 records in random order, as indexeddb can hardly read data from a random
+      position（乱序读取 1000 条数据，indexeddb 难以实现随机位置读取数据）</span>
   </div>
   <div>
     <a href="https://github.com/hughfenghen/opfs-tools" target="_blank"> opfs-tools (WebWorker):</a>
