@@ -16,8 +16,10 @@ import { OTDir, dir } from './directory';
  * @param {string} filePath - The path of the file.
  * return A OTFile instance.
  *
- * 全 origin（多 tab、多实例）共享同一文件在 SharedWorker 中的唯一句柄：
+ * 同一 tab 内，同一 path 的多个实例共享专用 Worker 中的唯一句柄：
  * 并发 read 自动排队；并发 write 被 Web Locks 拒绝（文件已被锁时抛错）。
+ * 注意：createSyncAccessHandle 仅限 Dedicated Worker，句柄不跨 tab 共享；
+ * 跨 tab 同时打开同一文件仍受 OPFS 独占锁限制。
  *
  * @example
  * // Read content from a file
@@ -69,7 +71,7 @@ export declare class OTFile {
     }>;
     /**
      * Random access to file.
-     * 读不加锁；全 origin 共享唯一句柄，并发 read 在 SharedWorker 中自动排队。
+     * 读不加锁；同一 tab 内共享唯一句柄，并发 read 在 Worker 中自动排队。
      */
     createReader(): Promise<{
         read: (size: number, opts?: {

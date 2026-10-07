@@ -18,28 +18,203 @@ type PostMsg = (
   trans?: Transferable[]
 ) => Promise<unknown>;
 
+type Msger = {
+  postMsg: PostMsg;
+  terminate: () => void;
+};
+
+// ============================================================================
+// Worker 池 + path 粘性路由器
+// ----------------------------------------------------------------------------
+// 用一张 `path → worker` 绑定表取代原单例：同一 filePath 的全部消息在其存活期内
+// 恒定命中同一 Worker 实例（Worker 内按 path 持唯一句柄 + 引用计数的前提）。
+// 扩容只影响新 path 的分配、缩容只销毁无绑定的空闲 Worker，二者都不触碰活跃 path。
+// ============================================================================
+
+const MAX_WORKERS = 10;
+const MIN_WORKERS = 3;
+
+type WorkerEntry = {
+  msger: Msger;
+  // 当前绑定到该 Worker 的活跃 path 数；为 0 表示空闲。
+  pathCount: number;
+};
+
+type PathBinding = {
+  workerId: number;
+  // 该 path 的 open 净计数，与 Worker 内 handles 的 count 对应。
+  openCount: number;
+};
+
+const workers = new Map<number, WorkerEntry>();
+const pathBindings = new Map<string, PathBinding>();
+let workerSeq = 0;
+
+/** 新建一个 Worker 并入表，注入「死亡时清理本 Worker 绑定」的钩子。 */
+function spawnWorker(): number {
+  const workerId = (workerSeq += 1);
+  const msger = createMsger(() => handleWorkerFatal(workerId));
+  workers.set(workerId, { msger, pathCount: 0 });
+  return workerId;
+}
+
+/** 预热：把池补齐到下限 MIN_WORKERS（用户决策：下限恒为 3 的常驻预热池）。 */
+function ensurePrewarm(): void {
+  while (workers.size < MIN_WORKERS) spawnWorker();
+}
+
 /**
- * 打开（或复用）某文件在 Worker 中的唯一句柄，返回读写代理。
- * 同一 tab 内，同一 path 的所有 reader/writer 共享该 Worker 里的唯一句柄，
- * 读写经单 Worker 线程天然串行排队。
+ * 为「新 path」选择一个 Worker（4.3）：
+ * 1. 空闲 Worker（pathCount===0）优先复用；
+ * 2. 否则未达上限则扩容新建；
+ * 3. 否则选 pathCount 最小者复用（多路复用 → 在该 Worker 线程内串行排队）。
+ */
+function pickWorkerForNewPath(): number {
+  let minId = -1;
+  let minCount = Infinity;
+  for (const [id, entry] of workers) {
+    if (entry.pathCount === 0) return id;
+    if (entry.pathCount < minCount) {
+      minCount = entry.pathCount;
+      minId = id;
+    }
+  }
+  if (workers.size < MAX_WORKERS) return spawnWorker();
+  return minId;
+}
+
+/**
+ * 为新 path 同步建立绑定（必须在任何 await 之前完成，避免并发 open 把同一新 path
+ * 绑到不同 Worker）。返回所绑定 Worker 的 id。
+ */
+function bindNewPath(filePath: string): number {
+  // 下限恒为 3：首次访问即预热到 MIN_WORKERS。
+  ensurePrewarm();
+  const workerId = pickWorkerForNewPath();
+  const entry = workers.get(workerId);
+  if (entry != null) entry.pathCount += 1;
+  pathBindings.set(filePath, { workerId, openCount: 1 });
+  return workerId;
+}
+
+/** 按 path 路由到其绑定 Worker 的 postMsg；未绑定返回 null。 */
+function routeTo(filePath: string): PostMsg | null {
+  const binding = pathBindings.get(filePath);
+  if (binding == null) return null;
+  return workers.get(binding.workerId)?.msger.postMsg ?? null;
+}
+
+/** 空闲（pathCount===0）Worker 在高于下限时销毁，否则保活为预热池。 */
+function maybeShrink(workerId: number): void {
+  const entry = workers.get(workerId);
+  if (entry == null || entry.pathCount > 0) return;
+  if (workers.size > MIN_WORKERS) {
+    entry.msger.terminate();
+    workers.delete(workerId);
+  }
+}
+
+/** close / open 失败回滚：openCount--，归零则解绑 + pathCount-- + 缩减判定。 */
+function releasePath(filePath: string): void {
+  const binding = pathBindings.get(filePath);
+  if (binding == null) return;
+  binding.openCount -= 1;
+  if (binding.openCount <= 0) {
+    pathBindings.delete(filePath);
+    const entry = workers.get(binding.workerId);
+    if (entry != null) {
+      entry.pathCount -= 1;
+      if (entry.pathCount <= 0) maybeShrink(binding.workerId);
+    }
+  }
+}
+
+/** forceClose：无视计数直接解绑 + pathCount-- + 缩减判定。 */
+function forceUnbind(filePath: string): void {
+  const binding = pathBindings.get(filePath);
+  if (binding == null) return;
+  pathBindings.delete(filePath);
+  const entry = workers.get(binding.workerId);
+  if (entry != null) {
+    entry.pathCount -= 1;
+    if (entry.pathCount <= 0) maybeShrink(binding.workerId);
+  }
+}
+
+/**
+ * 某 Worker onerror 时的清理：移除该 Worker 并解绑其名下所有 path，
+ * 使后续 open 可重新分配（不就地重建以免错误循环；下次 open 的 ensurePrewarm 会补回下限）。
+ */
+function handleWorkerFatal(workerId: number): void {
+  workers.delete(workerId);
+  for (const [filePath, binding] of pathBindings) {
+    if (binding.workerId === workerId) pathBindings.delete(filePath);
+  }
+}
+
+/**
+ * 打开（或复用）某文件在其绑定 Worker 中的唯一句柄，返回读写代理。
+ * 同一 tab 内，同一 path 的所有 reader/writer 恒定命中同一 Worker 里的唯一句柄，
+ * 读写经该单 Worker 线程天然串行排队。
  */
 export async function createOPFSAccess(
   filePath: string
 ): Promise<OPFSWorkerAccessHandle> {
-  const postMsg = getWorker();
-  await postMsg('open', { filePath });
+  // 在任何 await 之前同步完成绑定/增计数，保证并发 open 的粘性路由正确。
+  const binding = pathBindings.get(filePath);
+  if (binding == null) {
+    bindNewPath(filePath);
+  } else {
+    binding.openCount += 1;
+  }
+
+  const postMsg = routeTo(filePath);
+  if (postMsg == null) throw Error(`route not found: ${filePath}`);
+
+  try {
+    await postMsg('open', { filePath });
+  } catch (err) {
+    // open 转发失败：回滚路由侧计数/绑定，避免条目残留。
+    releasePath(filePath);
+    throw err;
+  }
+
   return {
-    read: async (offset, size) =>
-      (await postMsg('read', { filePath, offset, size })) as ArrayBuffer,
-    write: async (data, opts) =>
-      (await postMsg('write', { filePath, data, opts }, [
+    read: async (offset, size) => {
+      const pm = routeTo(filePath);
+      if (pm == null) throw Error(`file not opened: ${filePath}`);
+      return (await pm('read', { filePath, offset, size })) as ArrayBuffer;
+    },
+    write: async (data, opts) => {
+      const pm = routeTo(filePath);
+      if (pm == null) throw Error(`file not opened: ${filePath}`);
+      return (await pm('write', { filePath, data, opts }, [
         ArrayBuffer.isView(data) ? data.buffer : data,
-      ])) as number,
-    close: async () => (await postMsg('close', { filePath })) as void,
-    truncate: async (newSize: number) =>
-      (await postMsg('truncate', { filePath, newSize })) as void,
-    getSize: async () => (await postMsg('getSize', { filePath })) as number,
-    flush: async () => (await postMsg('flush', { filePath })) as void,
+      ])) as number;
+    },
+    close: async () => {
+      const pm = routeTo(filePath);
+      try {
+        if (pm != null) await pm('close', { filePath });
+      } finally {
+        releasePath(filePath);
+      }
+    },
+    truncate: async (newSize: number) => {
+      const pm = routeTo(filePath);
+      if (pm == null) throw Error(`file not opened: ${filePath}`);
+      await pm('truncate', { filePath, newSize });
+    },
+    getSize: async () => {
+      const pm = routeTo(filePath);
+      if (pm == null) throw Error(`file not opened: ${filePath}`);
+      return (await pm('getSize', { filePath })) as number;
+    },
+    flush: async () => {
+      const pm = routeTo(filePath);
+      if (pm == null) throw Error(`file not opened: ${filePath}`);
+      await pm('flush', { filePath });
+    },
   };
 }
 
@@ -48,18 +223,24 @@ export function postToOPFS(
   filePath: string,
   evtType: 'isOpen' | 'forceClose'
 ): Promise<unknown> {
-  return getWorker()(evtType, { filePath });
+  const postMsg = routeTo(filePath);
+  if (evtType === 'isOpen') {
+    // 未绑定说明无 Worker 可问，直接判定未打开。
+    if (postMsg == null) return Promise.resolve(false);
+    return postMsg('isOpen', { filePath });
+  }
+  // forceClose：未绑定则无事可做。
+  if (postMsg == null) return Promise.resolve(undefined);
+  const resP = postMsg('forceClose', { filePath });
+  forceUnbind(filePath);
+  return resP;
 }
 
-// 单个内联 Dedicated Worker：按 path 持句柄 + 计数需要「同一 path 始终同一 Worker」，
-// 单实例天然满足；读写在单线程串行。
-let msger: PostMsg | null = null;
-function getWorker(): PostMsg {
-  if (msger == null) msger = createMsger();
-  return msger;
-}
-
-function createMsger(): PostMsg {
+/**
+ * 创建单个 Worker 的消息收发器（每 Worker 一个）。
+ * onFatal 在 Worker 加载/运行错误时被调用，交由路由器清理本 Worker 的绑定。
+ */
+function createMsger(onFatal: () => void): Msger {
   const worker = new OPFSWorker();
 
   let cbId = 0;
@@ -73,6 +254,8 @@ function createMsger(): PostMsg {
       cbFns[+id]?.reject(Error(`worker error: ${errMsg}`));
       delete cbFns[+id];
     }
+    // 通知路由器移除该 Worker 并解绑其名下所有 path。
+    onFatal();
   };
 
   worker.onmessage = ({
@@ -93,7 +276,7 @@ function createMsger(): PostMsg {
     delete cbFns[data.cbId];
   };
 
-  return (evtType, args, trans = []) => {
+  const postMsg: PostMsg = (evtType, args, trans = []) => {
     cbId += 1;
     const id = cbId;
     const rsP = new Promise((resolve, reject) => {
@@ -102,4 +285,6 @@ function createMsger(): PostMsg {
     worker.postMessage({ cbId: id, evtType, args }, trans);
     return rsP;
   };
+
+  return { postMsg, terminate: () => worker.terminate() };
 }
