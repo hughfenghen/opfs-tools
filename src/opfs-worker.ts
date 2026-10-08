@@ -4,7 +4,7 @@ import { FileSystemSyncAccessHandle, getFSHandle } from './common';
 // count 归零即真正关闭句柄。
 const handles = new Map<
   string,
-  { handleP: FileSystemSyncAccessHandle; count: number }
+  { handleP: Promise<FileSystemSyncAccessHandle>; count: number }
 >();
 
 type MsgData = {
@@ -32,24 +32,29 @@ async function handleMsg(
     let entry = handles.get(filePath);
 
     if (evtType === 'open') {
-      // open 替代原 register：首次打开创建句柄，之后仅累加计数。
       if (entry == null) {
-        const fh = await getFSHandle(filePath, {
-          create: true,
-          isFile: true,
-        });
-        if (fh == null) throw Error(`not found file: ${filePath}`);
-        const handleP = await fh.createSyncAccessHandle();
+        // 关键：把「句柄创建 Promise」同步写入 map（createSyncAccessHandle 之前就 set），
+        // 确保同一 path 的并发 open 复用同一创建 Promise；否则两个 open 都会越过
+        // entry==null 检查各自 createSyncAccessHandle，第二个因句柄已存在抛 NoModificationAllowedError。
+        const handleP = (async () => {
+          const fh = await getFSHandle(filePath, {
+            create: true,
+            isFile: true,
+          });
+          if (fh == null) throw Error(`not found file: ${filePath}`);
+          return await fh.createSyncAccessHandle();
+        })();
         entry = { handleP, count: 0 };
-        // 同步写入，确保并发 open 复用同一创建 Promise。
         handles.set(filePath, entry);
       }
-      entry.count += 1;
       try {
+        // 等待句柄创建完成（并发 open 共享同一 Promise），成功后才累加计数。
+        await entry.handleP;
+        entry.count += 1;
       } catch (err) {
-        // 创建失败：回滚计数并清理，避免条目残留卡死后续 open。
-        entry.count -= 1;
-        if (entry.count <= 0) handles.delete(filePath);
+        // 创建失败：清理条目，避免残留一个 reject 的 Promise 卡死后续 open。
+        if (handles.get(filePath) === entry && entry.count <= 0)
+          handles.delete(filePath);
         throw err;
       }
     } else if (evtType === 'close') {
@@ -57,7 +62,7 @@ async function handleMsg(
         entry.count -= 1;
         if (entry.count <= 0) {
           handles.delete(filePath);
-          entry.handleP.close();
+          (await entry.handleP).close();
           // 本 Worker 句柄已全部关闭 → 通知池侧启动空闲冷却。
           emitIdleIfEmpty(post);
         }
@@ -65,9 +70,8 @@ async function handleMsg(
     } else if (evtType === 'forceClose') {
       if (entry != null) {
         handles.delete(filePath);
-        // close() 为同步方法，返回 undefined，不能 .catch()
         try {
-          entry.handleP.close();
+          (await entry.handleP).close();
         } catch (err) {
           throw err;
         } finally {
@@ -78,7 +82,7 @@ async function handleMsg(
       returnVal = entry != null && entry.count > 0;
     } else {
       if (entry == null) throw Error(`file not opened: ${filePath}`);
-      const accessHandle = entry.handleP;
+      const accessHandle = await entry.handleP;
       if (evtType === 'truncate') {
         accessHandle.truncate(args.newSize);
       } else if (evtType === 'write') {
