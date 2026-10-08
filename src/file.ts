@@ -138,6 +138,13 @@ export class OTFile {
       const accHandle = await createOPFSAccess(this.#path);
       let pos = await accHandle.getSize();
       let closed = false;
+      const close = async () => {
+        if (closed) return;
+        closed = true;
+        await accHandle.close();
+        this.#writing = false;
+      };
+
       return {
         write: async (
           chunk: string | BufferSource,
@@ -160,12 +167,8 @@ export class OTFile {
           if (closed) throw Error(`Writer is closed: ${this.#path}`);
           await accHandle.flush();
         },
-        close: async () => {
-          if (closed) throw Error(`Writer is closed: ${this.#path}`);
-          closed = true;
-          await accHandle.close();
-          this.#writing = false;
-        },
+        close: close,
+        [Symbol.asyncDispose ?? Symbol.for('Symbol.asyncDispose')]: close,
       };
     } catch (err) {
       this.#writing = false;
@@ -181,6 +184,11 @@ export class OTFile {
 
     let closed = false;
     let pos = 0;
+    const close = async () => {
+      if (closed) return;
+      closed = true;
+      await accHandle.close();
+    };
     return {
       read: async (size: number, opts: { at?: number } = {}) => {
         if (closed) throw Error(`Reader is closed: ${this.#path}`);
@@ -193,11 +201,8 @@ export class OTFile {
         if (closed) throw Error(`Reader is closed: ${this.#path}`);
         return await accHandle.getSize();
       },
-      close: async () => {
-        if (closed) return;
-        closed = true;
-        await accHandle.close();
-      },
+      close,
+      [Symbol.asyncDispose ?? Symbol.for('Symbol.asyncDispose')]: close,
     };
   }
 

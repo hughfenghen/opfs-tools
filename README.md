@@ -20,7 +20,8 @@ await write('/dir/fetch-file', (await fetch('//example.com')).body);
 await write('/dir/input-file', inputFile.stream());
 
 // For incremental file writes, please refer to the API documentation.
-const writer = await file('/dir/file').createWriter();
+await using w = await file('/dir/file').createWriter();
+await w.write('hello');
 
 // --------- Read ---------
 await file('/dir/file.txt').text();
@@ -28,7 +29,8 @@ await file('/dir/input-file').arrayBuffer();
 await file('/dir/input-file').stream();
 
 // If you want to read file fragments, please refer to the API documentation.
-const reader = await file('/dir/input-file').createReader();
+await using r = await file('/dir/input-file').createReader();
+await r.read(1024, { at: 0 });
 
 await dir('/test-dir').children();
 
