@@ -17,4 +17,10 @@ await write(f1, '222');
 
 console.log('多文件句柄读写', (await f2.text()) === '222');
 
+{
+  const f = tmpfile();
+  await using writer = await f.createWriter();
+  console.log('using writer, auto invoke close', writer);
+}
+
 export {};

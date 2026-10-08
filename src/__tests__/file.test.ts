@@ -261,3 +261,62 @@ test('force remove file', async () => {
   await f.remove({ force: true });
   expect(await f.exists()).toBe(false);
 });
+
+test('await using auto-closes writer on scope exit', async () => {
+  const f = file(filePath);
+  let writer: Awaited<ReturnType<typeof f.createWriter>>;
+  {
+    await using w = await f.createWriter();
+    writer = w;
+    await w.truncate(0);
+    await w.write('using');
+  }
+  // 作用域退出后句柄已关闭：再写抛错，且单写者锁已释放可再次获取 writer
+  await expect(async () => {
+    await writer.write('x');
+  }).rejects.toThrowError('Writer is closed');
+  const w2 = await f.createWriter();
+  await w2.close();
+
+  expect(await f.text()).toBe('using');
+});
+
+test('await using auto-closes reader on scope exit', async () => {
+  await write(filePath, 'using-reader');
+  const f = file(filePath);
+  let reader: Awaited<ReturnType<typeof f.createReader>>;
+  {
+    await using r = await f.createReader();
+    reader = r;
+    expect(new TextDecoder().decode(await r.read(5, { at: 0 }))).toBe('using');
+  }
+  await expect(async () => {
+    await reader.read(5);
+  }).rejects.toThrowError('Reader is closed');
+});
+
+test('writer dispose is idempotent with explicit close', async () => {
+  const f = file(filePath);
+  const writer = await f.createWriter();
+  await writer.truncate(0);
+  await writer.write('ok');
+  // 先手动 close，再触发 dispose：dispose 以 closed 守卫 no-op，不得抛错
+  await writer.close();
+  await writer[Symbol.asyncDispose]();
+  // 重复触发 dispose 仍为 no-op
+  await writer[Symbol.asyncDispose]();
+  // dispose 释放了锁，可再次获取 writer
+  const w2 = await f.createWriter();
+  await w2.close();
+});
+
+test('reader dispose is idempotent with explicit close', async () => {
+  await write(filePath, 'foo');
+  const f = file(filePath);
+  const reader = await f.createReader();
+  await reader.close();
+  // dispose 复用幂等 close：与显式 close 任意组合、重复触发均不抛错
+  await reader[Symbol.asyncDispose]();
+  await reader[Symbol.asyncDispose]();
+  await reader.close();
+});
