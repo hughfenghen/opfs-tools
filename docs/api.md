@@ -14,14 +14,11 @@ import { OTDir, dir } from './directory';
 /**
  * Retrieves a file wrapper instance for the specified file path.
  * @param {string} filePath - The path of the file.
- * @param {'r' | 'rw' | 'rw-unsafe'} mode - A string specifying the locking mode for the access handle. The default value is "rw"
  * return A OTFile instance.
- *
- * @see [MDN createSyncAccessHandle](https://developer.mozilla.org/en-US/docs/Web/API/FileSystemFileHandle/createSyncAccessHandle)
  *
  * @example
  * // Read content from a file
-  const fileContent = await file('/path/to/file.txt', 'r').text();
+  const fileContent = await file('/path/to/file.txt').text();
   console.log('File content:', fileContent);
 
   // Check if a file exists
@@ -31,7 +28,7 @@ import { OTDir, dir } from './directory';
   // Remove a file
   await file('/path/to/file.txt').remove();
  */
-export declare function file(filePath: string, mode?: ShortOpenMode): OTFile;
+export declare function file(filePath: string): OTFile;
 /**
  * Writes content to the specified file.
  * @param {string} target - The path of the file.
@@ -45,7 +42,6 @@ export declare function file(filePath: string, mode?: ShortOpenMode): OTFile;
 export declare function write(target: string | OTFile, content: string | BufferSource | ReadableStream<BufferSource> | OTFile, opts?: {
     overwrite: boolean;
 }): Promise<void>;
-type ShortOpenMode = 'r' | 'rw' | 'rw-unsafe';
 /**
  * Represents a wrapper for interacting with a file in the filesystem.
  */
@@ -55,9 +51,9 @@ export declare class OTFile {
     get path(): string;
     get name(): string;
     get parent(): ReturnType<typeof dir> | null;
-    constructor(filePath: string, mode: ShortOpenMode);
+    constructor(filePath: string);
     /**
-     * Random write to file
+     * Random write to file.
      */
     createWriter(): Promise<{
         write: (chunk: string | BufferSource, opts?: {
@@ -68,7 +64,7 @@ export declare class OTFile {
         close: () => Promise<void>;
     }>;
     /**
-     * Random access to file
+     * Random access to file.
      */
     createReader(): Promise<{
         read: (size: number, opts?: {
@@ -173,6 +169,9 @@ export declare class OTDir {
 
 ```ts
 import { OTFile } from './file';
+export declare function holdFileLock(name: string): Promise<void>;
+export declare function isFileHeld(name: string): Promise<boolean>;
+export declare function clearUnusedTMPFiles(): Promise<void>;
 /**
  * Create a temporary file that will automatically be cleared to avoid occupying too much storage space.
  * The temporary file name will be automatically generated and stored in a specific directory.

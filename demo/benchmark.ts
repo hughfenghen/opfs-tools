@@ -1,5 +1,5 @@
 import { openDB } from 'idb';
-import { file } from '../src';
+import { file, tmpfile, write } from '../src';
 
 const db = await openDB('my-db', 1, {
   upgrade(db) {
@@ -38,7 +38,7 @@ let tx = db.transaction('data', 'readwrite');
 let store = tx.objectStore('data');
 let i = 0;
 for (const d of writeData) {
-  store.put(d, `testfile${i++}`);
+  await store.put(d, `testfile${i++}`);
 }
 await tx.done;
 updateCost('indexeddb-write-cost');
@@ -67,7 +67,8 @@ updateCost('file-slice-read-cost');
 
 const idbKeys = Array(1000)
   .fill(0)
-  .map((_, idx) => `testfile${idx}`);
+  .map((_, idx) => `testfile${idx}`)
+  .sort(() => Math.random() - 0.5);
 
 startTime = performance.now();
 tx = db.transaction('data', 'readwrite');
@@ -79,6 +80,8 @@ for (const k of idbKeys) {
 await tx.done;
 updateCost('indexeddb-read-cost');
 
+// 预热 worker
+await write(tmpfile(), '1');
 startTime = performance.now();
 const reader = await file(fileName).createReader();
 for (const p of startPoints) {

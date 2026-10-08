@@ -9,8 +9,8 @@ const tf = tmpfile();
 await write(tf, '111111111');
 
 const filePath = '/unit-test/file';
-const f1 = file(filePath, 'rw-unsafe');
-const f2 = file(filePath, 'rw-unsafe');
+const f1 = file(filePath);
+const f2 = file(filePath);
 
 await write(f1, '111');
 await write(f1, '222');
