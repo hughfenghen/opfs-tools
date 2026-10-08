@@ -36,7 +36,7 @@ type Msger = {
 // 扩容只影响新 path 的分配、缩容只销毁无绑定的空闲 Worker，二者都不触碰活跃 path。
 // ============================================================================
 
-const MAX_WORKERS = 10;
+const MAX_WORKERS = 6;
 const MIN_WORKERS = 3;
 // 空闲 Worker 的冷却时长（ms）：pathCount 归零后不立刻销毁，延时到期仍空闲才 terminate。
 // 吸收常见 close→reopen 抖动，避免反复重建 Worker 的成本；可按实测调整。
