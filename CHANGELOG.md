@@ -1,5 +1,16 @@
 # opfs-tools
 
+## 0.8.0
+
+### Minor Changes
+
+- 5e01c67: Reworked the single access-worker into a dynamically scalable worker pool for better concurrency and resource efficiency.
+
+### Patch Changes
+
+- 0d34448: concurrent creation of reader/writer causes error
+- 44b3df1: Reader/Writer supports await using for explicit resource management.
+
 ## 0.7.5
 
 ### Patch Changes
