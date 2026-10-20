@@ -1,5 +1,11 @@
 # opfs-tools
 
+## 0.8.1
+
+### Patch Changes
+
+- aa0f881: feat: 支持文件打开模式 rw-unsafe
+
 ## 0.8.0
 
 ### Minor Changes
