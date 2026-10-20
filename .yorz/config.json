@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "agent": {
+    "kind": "claude"
+  },
+  "specsDir": ".yorz/specs",
+  "commands": [],
+  "customInstructions": []
+}

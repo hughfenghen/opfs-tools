@@ -1,11 +1,25 @@
-import { FileSystemSyncAccessHandle, getFSHandle } from './common';
+import {
+  FileSystemSyncAccessHandle,
+  TFileMode,
+  TFileSystemAccessMode,
+  getFSHandle,
+} from './common';
 
 // 以 filePath 为键，持有「每个文件唯一」的 SyncAccessHandle，并对其 open/close 计数；
 // count 归零即真正关闭句柄。
 const handles = new Map<
   string,
-  { handleP: Promise<FileSystemSyncAccessHandle>; count: number }
+  {
+    handleP: Promise<FileSystemSyncAccessHandle>;
+    count: number;
+    mode: TFileMode;
+  }
 >();
+
+const accessModeMap: Record<TFileMode, TFileSystemAccessMode> = {
+  rw: 'readwrite',
+  'rw-unsafe': 'readwrite-unsafe',
+};
 
 type MsgData = {
   cbId: number;
@@ -32,6 +46,7 @@ async function handleMsg(
     let entry = handles.get(filePath);
 
     if (evtType === 'open') {
+      const mode = (args.mode ?? 'rw') as TFileMode;
       if (entry == null) {
         // 关键：把「句柄创建 Promise」同步写入 map（createSyncAccessHandle 之前就 set），
         // 确保同一 path 的并发 open 复用同一创建 Promise；否则两个 open 都会越过
@@ -42,9 +57,11 @@ async function handleMsg(
             isFile: true,
           });
           if (fh == null) throw Error(`not found file: ${filePath}`);
-          return await fh.createSyncAccessHandle();
+          return await fh.createSyncAccessHandle({
+            mode: accessModeMap[mode],
+          });
         })();
-        entry = { handleP, count: 0 };
+        entry = { handleP, count: 0, mode };
         handles.set(filePath, entry);
       }
       try {
@@ -111,7 +128,7 @@ async function handleMsg(
     post({
       evtType: 'throwError',
       cbId,
-      errMsg: err.name + ': ' + err.message,
+      errMsg: `${err.name}: ${err.message} path: ${filePath}`,
     });
   }
 }

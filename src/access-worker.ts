@@ -1,4 +1,4 @@
-import { FileSystemSyncAccessHandle } from './common';
+import { FileSystemSyncAccessHandle, TFileMode } from './common';
 // createSyncAccessHandle 仅在 Dedicated Worker 可用（SharedWorker 不暴露），故使用内联专用 Worker。
 // 内联（blob）对专用 Worker 无影响：每个 tab 本就各自持有自己的 Worker，不需要跨 tab 共享实例。
 import OPFSWorker from './opfs-worker?worker&inline';
@@ -205,7 +205,8 @@ function handleWorkerFatal(workerId: number): void {
  * 读写经该单 Worker 线程天然串行排队。
  */
 export async function createOPFSAccess(
-  filePath: string
+  filePath: string,
+  mode: TFileMode = 'rw'
 ): Promise<OPFSWorkerAccessHandle> {
   // 在任何 await 之前同步完成绑定/置忙，保证并发 open 的粘性路由正确、
   // 且空闲信号晚于新 open 时被 idle=false 兜住（见 4.3 竞态处理）。
@@ -219,7 +220,7 @@ export async function createOPFSAccess(
   if (postMsg == null) throw Error(`route not found: ${filePath}`);
 
   try {
-    await postMsg('open', { filePath });
+    await postMsg('open', { filePath, mode });
   } catch (err) {
     // open 转发失败：仅当本次新建了绑定时回滚，避免误删复用中的既有绑定。
     if (isNewBinding) unbindFailedOpen(filePath, workerId);

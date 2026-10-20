@@ -23,4 +23,22 @@ console.log('多文件句柄读写', (await f2.text()) === '222');
   console.log('using writer, auto invoke close', writer);
 }
 
+// await file('/unit-test/multi-tab-open-file').createWriter();
+const multiTabFile = file('/unit-test/multi-tab-open-file', {
+  mode: 'rw-unsafe',
+})
+// 同一文件两种模式互斥：multiTabFile 存活期间，以另一模式打开同 path 会在创建点抛错。
+try {
+  file('/unit-test/multi-tab-open-file'); // 默认 rw，与存活的 rw-unsafe 冲突
+} catch (err) {
+  console.log('expected mutual-exclusion error:', (err as Error).message);
+}
+const writer = await multiTabFile.createWriter();
+await writer.truncate(0)
+// 打开两个tab，观察同一个文件，在两个 tab 以 unsafe 模式同时写入
+// setInterval(async () => {
+//   await writer.write('1')
+//   console.log('file content:', await multiTabFile.text())
+// }, 1000)
+
 export {};

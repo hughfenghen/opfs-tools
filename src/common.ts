@@ -1,3 +1,6 @@
+export type TFileMode = 'rw' | 'rw-unsafe';
+export type TFileSystemAccessMode = 'readwrite' | 'readwrite-unsafe';
+
 export interface FileSystemSyncAccessHandle {
   read: (container: ArrayBuffer, opts: { at: number }) => number;
   write: (data: ArrayBuffer | ArrayBufferView, opts?: { at: number }) => number;
@@ -11,7 +14,9 @@ export interface FileSystemSyncAccessHandle {
 // 这里做全局声明合并补齐，供 worker 内使用。
 declare global {
   interface FileSystemFileHandle {
-    createSyncAccessHandle(): Promise<FileSystemSyncAccessHandle>;
+    createSyncAccessHandle(options?: {
+      mode?: TFileSystemAccessMode;
+    }): Promise<FileSystemSyncAccessHandle>;
   }
 }
 

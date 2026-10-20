@@ -1,22 +1,25 @@
 import { createOPFSAccess, postToOPFS } from './access-worker';
-import { getFSHandle, joinPath, parsePath, remove } from './common';
+import { TFileMode, getFSHandle, joinPath, parsePath, remove } from './common';
 import { OTDir, dir } from './directory';
 
 // fileCache 弱引用化：允许无人使用的 OTFile 被 GC；不再强引用导致永驻。
-const fileCache = new Map<string, WeakRef<OTFile>>();
+// 键为裸 filePath；缓存项携带创建时的 mode，供 file() 在创建点做「同 path 两模式互斥」校验
+// （无需给 OTFile 增加对外 mode getter）。同 path 任意时刻至多一个存活实例（互斥保证不同
+// 模式不并存、同模式复用同实例），回收兜底因此无需跨键扫描。
+const fileCache = new Map<string, { ref: WeakRef<OTFile>; mode: TFileMode }>();
 
-// OTFile 被 GC 时的兜底安全网：淘汰缓存 + forceClose 泄漏句柄（heldValue 为纯 path）。
+// OTFile 被 GC 时的兜底安全网。因同 path 至多一个存活实例，回调只需单一判定：
+// 当该 path 的缓存项已 deref 为空（无存活实例），同处删缓存并 forceClose 兜底泄漏句柄；
+// 若晚到回调遇到同 path 新实例（deref 非空），整体跳过，天然不误关新实例。
 // 单写者互斥由实例级 #writing 承载、随实例 GC 消失，无外部锁可泄漏，故回调无需释放锁。
 // 运行时不支持 FinalizationRegistry 时退化为 null（仅失去自动兜底，仍可显式 close）。
 const otfileRegistry =
   typeof FinalizationRegistry !== 'undefined'
-    ? new FinalizationRegistry<string>((path) => {
-        // 缓存淘汰 + 句柄 forceClose：仅当该 path 已无存活 OTFile，
-        // 避免「旧实例终结回调晚于同 path 新实例写入」时误删/误关新实例。
-        if (fileCache.get(path)?.deref() === undefined) {
-          fileCache.delete(path);
+    ? new FinalizationRegistry<string>((filePath) => {
+        if (fileCache.get(filePath)?.ref.deref() === undefined) {
+          fileCache.delete(filePath);
           // 终结回调不能 await，fire-and-forget；forceClose 对已关句柄天然 no-op。
-          postToOPFS(path, 'forceClose');
+          postToOPFS(filePath, 'forceClose');
         }
       })
     : null;
@@ -37,12 +40,27 @@ const otfileRegistry =
   // Remove a file
   await file('/path/to/file.txt').remove();
  */
-export function file(filePath: string) {
-  const cacheF = fileCache.get(filePath)?.deref();
-  if (cacheF) return cacheF;
-  const f = new OTFile(filePath);
-  fileCache.set(filePath, new WeakRef(f));
-  // GC 兜底注册下沉到工厂：heldValue 为纯 path，OTFile 被回收时淘汰缓存 + forceClose 句柄。
+export function file(
+  filePath: string,
+  opts: { mode?: TFileMode } = {}
+): OTFile {
+  const mode = opts.mode ?? 'rw';
+  const hit = fileCache.get(filePath);
+  const live = hit?.ref.deref();
+  if (live != null) {
+    // 同 path 两模式互斥：已有存活实例时只允许同模式复用，异模式在创建点即报错，
+    // 把「跨模式共享句柄 / 跨标签页锁冲突」这类运行期不稳定性提前暴露。
+    if (hit!.mode !== mode) {
+      throw Error(
+        `file "${filePath}" is already opened with mode "${
+          hit!.mode
+        }", cannot open with mode "${mode}"`
+      );
+    }
+    return live;
+  }
+  const f = new OTFile(filePath, mode);
+  fileCache.set(filePath, { ref: new WeakRef(f), mode });
   otfileRegistry?.register(f, filePath);
   return f;
 }
@@ -113,9 +131,11 @@ export class OTFile {
   #path: string;
   #parentPath: string;
   #name: string;
+  #mode: TFileMode;
 
-  constructor(filePath: string) {
+  constructor(filePath: string, mode: TFileMode = 'rw') {
     this.#path = filePath;
+    this.#mode = mode;
     const { parent, name } = parsePath(filePath);
     if (parent == null) throw Error(`Invalid path: ${filePath}`);
     this.#name = name;
@@ -135,7 +155,7 @@ export class OTFile {
       const txtEC = new TextEncoder();
 
       // append content by default
-      const accHandle = await createOPFSAccess(this.#path);
+      const accHandle = await createOPFSAccess(this.#path, this.#mode);
       let pos = await accHandle.getSize();
       let closed = false;
       const close = async () => {
@@ -180,7 +200,7 @@ export class OTFile {
    * Random access to file.
    */
   async createReader() {
-    const accHandle = await createOPFSAccess(this.#path);
+    const accHandle = await createOPFSAccess(this.#path, this.#mode);
 
     let closed = false;
     let pos = 0;

@@ -4,6 +4,49 @@ import { dir } from '../directory';
 
 const filePath = '/unit-test/file';
 
+async function openUnsafeHandleInIsolatedWorker(path: string) {
+  const workerSource = `
+    self.onmessage = async ({ data: { path } }) => {
+      try {
+        const parts = path.split('/').filter(Boolean);
+        const name = parts.pop();
+        let dir = await navigator.storage.getDirectory();
+        for (const part of parts) {
+          dir = await dir.getDirectoryHandle(part, { create: true });
+        }
+        const fileHandle = await dir.getFileHandle(name, { create: true });
+        const accessHandle = await fileHandle.createSyncAccessHandle({
+          mode: 'readwrite-unsafe',
+        });
+        accessHandle.close();
+        self.postMessage({ ok: true });
+      } catch (error) {
+        self.postMessage({
+          ok: false,
+          error: error.name + ': ' + error.message,
+        });
+      }
+    };
+  `;
+  const workerUrl = URL.createObjectURL(
+    new Blob([workerSource], { type: 'text/javascript' })
+  );
+  const worker = new Worker(workerUrl);
+
+  try {
+    return await new Promise<{ ok: boolean; error?: string }>(
+      (resolve, reject) => {
+        worker.onmessage = ({ data }) => resolve(data);
+        worker.onerror = ({ message }) => reject(Error(message));
+        worker.postMessage({ path });
+      }
+    );
+  } finally {
+    worker.terminate();
+    URL.revokeObjectURL(workerUrl);
+  }
+}
+
 beforeEach(async () => {
   await file(filePath).remove({ force: true });
 });
@@ -89,6 +132,62 @@ test('write operation is exclusive', async () => {
   expect(async () => {
     await writer.write('44444');
   }).rejects.toThrowError('Writer is closed');
+});
+
+test('file() enforces mutual exclusion between modes for the same path', () => {
+  const defaultFile = file(filePath);
+
+  // 同 path + 同 mode：复用同一实例
+  expect(defaultFile).toBe(file(filePath, { mode: 'rw' }));
+  // 同 path + 异 mode：存活实例在时，创建点直接抛错
+  expect(() => file(filePath, { mode: 'rw-unsafe' })).toThrowError(
+    'already opened with mode "rw"'
+  );
+});
+
+test('rw-unsafe allows another worker to open the same file', async () => {
+  // rw-unsafe 用例使用独立 path，避免与共享 filePath（默认 rw 清理）互斥冲突
+  const unsafePath = '/unit-test/file-unsafe';
+  const f = file(unsafePath, { mode: 'rw-unsafe' });
+  {
+    await using writer = await f.createWriter();
+    await writer.truncate(0);
+    await writer.write('unsafe');
+
+    expect(await openUnsafeHandleInIsolatedWorker(unsafePath)).toEqual({
+      ok: true,
+    });
+  }
+  await f.remove({ force: true });
+});
+
+test('default rw remains exclusive across workers', async () => {
+  const f = file(filePath);
+  await using writer = await f.createWriter();
+  await writer.flush();
+
+  const result = await openUnsafeHandleInIsolatedWorker(filePath);
+  expect(result.ok).toBe(false);
+  expect(result.error).toContain('NoModificationAllowedError');
+});
+
+test('same path can switch mode after the previous instance is removed', async () => {
+  const safeFile = file(filePath, { mode: 'rw' });
+  {
+    await using writer = await safeFile.createWriter();
+    await writer.flush();
+
+    // 存活 rw 实例在时，换模式在创建点即抛错（而非拖到 Worker 打开）
+    expect(() => file(filePath, { mode: 'rw-unsafe' })).toThrowError(
+      'already opened with mode "rw"'
+    );
+  }
+
+  // force 移除清空该 path 的缓存与底层句柄后，可用另一模式重新打开
+  await safeFile.remove({ force: true });
+  const unsafeFile = file(filePath, { mode: 'rw-unsafe' });
+  expect(unsafeFile).not.toBe(safeFile);
+  await unsafeFile.remove({ force: true });
 });
 
 test('read operations can be parallelized', async () => {

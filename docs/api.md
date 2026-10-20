@@ -10,6 +10,7 @@ import type { OTFile, OTDir } from 'opfs-tools';
 ## file
 
 ```ts
+import { TFileMode } from './common';
 import { OTDir, dir } from './directory';
 /**
  * Retrieves a file wrapper instance for the specified file path.
@@ -28,7 +29,9 @@ import { OTDir, dir } from './directory';
   // Remove a file
   await file('/path/to/file.txt').remove();
  */
-export declare function file(filePath: string): OTFile;
+export declare function file(filePath: string, opts?: {
+    mode?: TFileMode;
+}): OTFile;
 /**
  * Writes content to the specified file.
  * @param {string} target - The path of the file.
@@ -51,7 +54,7 @@ export declare class OTFile {
     get path(): string;
     get name(): string;
     get parent(): ReturnType<typeof dir> | null;
-    constructor(filePath: string);
+    constructor(filePath: string, mode?: TFileMode);
     /**
      * Random write to file.
      */
@@ -62,6 +65,7 @@ export declare class OTFile {
         truncate: (size: number) => Promise<void>;
         flush: () => Promise<void>;
         close: () => Promise<void>;
+        [Symbol.asyncDispose]: () => Promise<void>;
     }>;
     /**
      * Random access to file.
@@ -72,6 +76,7 @@ export declare class OTFile {
         }) => Promise<ArrayBuffer>;
         getSize: () => Promise<number>;
         close: () => Promise<void>;
+        [Symbol.asyncDispose]: () => Promise<void>;
     }>;
     text(): Promise<string>;
     arrayBuffer(): Promise<ArrayBuffer>;
